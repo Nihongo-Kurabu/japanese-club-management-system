@@ -1,0 +1,186 @@
+
+@import "tailwindcss";
+
+/* =========================================
+   KOMOREBI JAPANESE CLUB - DESIGN SYSTEM
+========================================= */
+
+@theme {
+  --color-primary-bg: #080A12;
+  --color-secondary-bg: #111522;
+  --color-surface: #171C2B;
+  --color-crimson: #E63946;
+  --color-shadow-purple: #7652D6;
+  --color-neon-cyan: #53D8F0;
+  --color-sakura-white: #F5EBDD;
+  --color-muted-text: #A6ADBD;
+  --color-pure-white: #FFFFFF;
+
+  --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+  --font-jp: 'Noto Sans JP', 'Inter', sans-serif;
+  --font-serif: 'Playfair Display', 'Cinzel', Georgia, serif;
+  --font-display: 'Cinzel', 'Playfair Display', serif;
+  --font-mono: 'JetBrains Mono', monospace;
+}
+
+/* =========================================
+   GLOBAL RESET
+========================================= */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  width: 100%;
+  min-width: 320px;
+  scroll-behavior: smooth;
+  scroll-padding-top: 90px;
+}
+
+body {
+  width: 100%;
+  min-width: 320px;
+  min-height: 100vh;
+  margin: 0;
+  padding: 0;
+
+  background: #080A12;
+  color: #FFFFFF;
+
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+#root {
+  width: 100%;
+  min-height: 100vh;
+  overflow-x: clip;
+}
+
+button {
+  font: inherit;
+}
+
+img,
+video,
+svg {
+  max-width: 100%;
+}
+
+button:focus-visible {
+  outline: 2px solid #53D8F0;
+  outline-offset: 4px;
+}
+
+/* =========================================
+   RESPONSIVE FOUNDATION
+========================================= */
+
+@media (max-width: 640px) {
+  html {
+    scroll-padding-top: 76px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* =========================================
+   CUSTOM SCROLLBAR
+========================================= */
+
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #080A12;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #252C42;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #E63946;
+}
+
+/* =========================================
+   VERTICAL JAPANESE TEXT
+========================================= */
+
+.writing-vertical {
+  writing-mode: vertical-rl;
+  text-orientation: upright;
+}
+
+/* =========================================
+   BREATHING / SUBTLE AURA GLOW
+========================================= */
+
+@keyframes breathing-glow {
+  0%,
+  100% {
+    box-shadow:
+      0 0 20px rgba(230, 57, 70, 0.25),
+      0 0 40px rgba(118, 82, 214, 0.15);
+  }
+
+  50% {
+    box-shadow:
+      0 0 35px rgba(230, 57, 70, 0.45),
+      0 0 70px rgba(83, 216, 240, 0.25);
+  }
+}
+
+.animate-breathing {
+  animation: breathing-glow 4s ease-in-out infinite;
+}
+
+/* =========================================
+   GLASSMORPHISM PANELS
+========================================= */
+
+.glass-panel {
+  background: rgba(23, 28, 43, 0.75);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.glass-panel-hover {
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.glass-panel-hover:hover {
+  border-color: rgba(230, 57, 70, 0.4);
+  box-shadow: 0 10px 30px -10px rgba(230, 57, 70, 0.2);
+}
+
+/* =========================================
+   JAPANESE PATTERN GRID
+========================================= */
+
+.bg-asanoha {
+  background-image:
+    radial-gradient(
+      rgba(245, 235, 221, 0.04) 1px,
+      transparent 1px
+    );
+  background-size: 24px 24px;
+}

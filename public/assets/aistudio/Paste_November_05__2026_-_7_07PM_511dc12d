@@ -1,0 +1,1275 @@
+# MASTER PROMPT: JAPANESE CLUB — ADMIN CONTROL CENTER & JLPT STUDENT REGISTRATION PORTAL
+
+## PROJECT OBJECTIVE
+
+Extend the existing Japanese Club website by building a complete, secure, scalable, role-based club management platform.
+
+This is a critical part of the project.
+
+The system must support:
+1. Faculty Member Management.
+2. Admin Registration and Faculty Approval.
+3. Secure Multi-Admin Control Center.
+4. Student JLPT Registration Portal.
+5. Student Registration Management.
+6. Interactive Japanese Learning Lab.
+7. Event Registration and Digital Check-in.
+8. Anime and Manga Discovery.
+
+The system must be designed for a real college environment, with multiple faculty members, multiple administrators, and approximately 1,000 student registrations.
+
+The website already has its own cinematic Japanese aesthetic, Mount Fuji imagery, anime-inspired visual identity, Japanese and English language support, and nine public pages.
+
+Preserve the existing website design.
+
+The management platform should use the same brand identity but have a clean, professional administrative interface.
+
+IMPORTANT:
+Do not treat this as a simple frontend demonstration. Implement real authentication, database persistence, authorization, registration workflows, and administrative functionality.
+
+==================================================
+01. SYSTEM ROLES AND PERMISSIONS
+==================================================
+
+Create three main access levels.
+
+A. FACULTY / SUPER ADMIN
+
+Faculty members have the highest authority.
+
+They can:
+
+- Log in using faculty credentials.
+- View all administrator applications.
+- Approve administrator registrations.
+- Reject administrator registrations.
+- Block administrator email addresses.
+- Unblock previously blocked addresses.
+- View admin registration history.
+- View all registered administrators.
+- Assign and modify admin roles.
+- Suspend and reactivate admins.
+- Enable or disable student JLPT registration.
+- Open or close student registration.
+- Set registration start and end dates.
+- View all student registrations.
+- Search and filter student records.
+- Export student data to CSV or Excel.
+- Manage registration settings.
+- View total registration statistics.
+- View system audit logs.
+- Manage events and announcements.
+- View all system activities.
+
+Faculty members must have complete control over the system.
+
+B. CLUB ADMINISTRATORS
+
+Multiple administrators must be supported.
+
+Every administrator has their own unique:
+- Name.
+- Email address.
+- Mobile number.
+- Password.
+- Assigned role.
+- Account status.
+
+Administrators must have role-based permissions.
+
+Suggested roles:
+
+1. President.
+2. Vice President.
+3. Secretary.
+4. Event Manager.
+5. Technical Administrator.
+6. Anime Group Moderator.
+7. Learning Coordinator.
+8. Gallery Manager.
+9. General Administrator.
+
+Allow faculty members to create custom roles and configure their permissions.
+
+Administrators can only access features permitted by their assigned roles.
+
+For example:
+
+Event Manager:
+- Create events.
+- Edit events.
+- Delete events if authorized.
+- View registrations.
+- Manage attendance.
+
+Technical Administrator:
+- Manage website content.
+- Manage technical configurations.
+- View technical logs.
+
+Learning Coordinator:
+- Manage Japanese learning content.
+- Create quizzes.
+- Manage learning resources.
+
+Anime Group Moderator:
+- Manage anime and manga recommendations.
+- Moderate community submissions.
+
+Secretary:
+- Manage announcements.
+- View club records.
+- Manage meeting information.
+
+President:
+- Access designated club management functions.
+
+IMPORTANT:
+Do not automatically grant every administrator full system permissions.
+
+Only faculty/super admins can approve new administrators or assign privileged permissions.
+
+C. STUDENTS
+
+Students can:
+
+- Register for the JLPT-related student portal.
+- Log in to their account.
+- View their registration status.
+- Update permitted personal details.
+- View Japanese learning resources.
+- Access learning quizzes.
+- View eligible events.
+- Register for events.
+- View event registration history.
+- Access their student dashboard.
+
+Students must never access admin or faculty management pages.
+
+==================================================
+02. HIDDEN ADMIN REGISTRATION AND LOGIN
+==================================================
+
+This is one of the most important requirements.
+
+Do not show administrator registration or login buttons in the main navigation.
+
+Do not display admin registration prominently on the homepage.
+
+Instead, place a small, discreet link in the website footer:
+
+ADMIN PORTAL
+
+Clicking this link opens a separate authentication page.
+
+The page must provide:
+
+- Administrator Registration.
+- Administrator Login.
+- Faculty Login.
+
+The registration form should be accessible only through the footer link.
+
+This is a discreet entry point, NOT a security mechanism.
+
+All admin routes and APIs must enforce server-side authorization.
+
+==================================================
+03. ADMINISTRATOR SELF-REGISTRATION
+==================================================
+
+Create an administrator registration form.
+
+Required fields:
+
+1. Full name.
+2. Official email address.
+3. Mobile number.
+4. Requested role.
+5. Password.
+6. Confirm password.
+
+Additional fields:
+
+- Department.
+- Reason for requesting administrator access.
+
+Registration workflow:
+
+STEP 1:
+An individual opens Admin Portal from the website footer.
+
+STEP 2:
+They select Administrator Registration.
+
+STEP 3:
+They fill in the required details.
+
+STEP 4:
+The system validates:
+- Email format.
+- Email uniqueness.
+- Mobile number format.
+- Password strength.
+- Password confirmation.
+- Existing account status.
+- Existing blocked email status.
+
+STEP 5:
+Send an email verification OTP or verification link.
+
+STEP 6:
+After successful email verification, create an application with status:
+
+PENDING FACULTY APPROVAL.
+
+STEP 7:
+Show this message:
+
+"Your administrator application has been submitted successfully. Your account is awaiting faculty verification and approval. You will receive an email notification once a decision has been made."
+
+IMPORTANT:
+
+- Do not create an active administrator account at this stage.
+- Do not grant administrative permissions.
+- Do not allow access to the admin dashboard.
+- Keep the account in pending status.
+- Do not expose pending applications publicly.
+
+Suggested account states:
+
+PENDING_EMAIL_VERIFICATION
+PENDING_APPROVAL
+APPROVED
+REJECTED
+BLOCKED
+SUSPENDED
+
+==================================================
+04. FACULTY APPROVAL SYSTEM
+==================================================
+
+This is the most important security workflow.
+
+Faculty members must verify whether an administrator applicant is genuinely authorized to manage the club.
+
+FACULTY ACCOUNT CREATION:
+
+Faculty accounts must NOT be created through public administrator registration.
+
+Create the initial faculty/super-admin account through a secure first-time provisioning process.
+
+For example:
+- A secure deployment-time setup command.
+- A one-time protected setup process.
+- A trusted institutional administrator provisioning process.
+
+Do not hardcode faculty credentials into frontend code or publish them in source repositories.
+
+Faculty members should have their own unique:
+- Email address.
+- Password.
+- Name.
+- Faculty designation.
+- Mobile number.
+
+Implement secure authentication, email verification, and preferably multi-factor authentication.
+
+FACULTY DASHBOARD:
+
+Create a dedicated faculty control center.
+
+Main navigation:
+
+1. Dashboard.
+2. Pending Admin Applications.
+3. Approved Administrators.
+4. Rejected Applications.
+5. Blocked Accounts.
+6. Student Registrations.
+7. JLPT Portal Settings.
+8. Event Management.
+9. Announcements.
+10. System Activity.
+11. Audit Logs.
+12. Settings.
+
+PENDING ADMIN APPLICATIONS:
+
+Display each application with:
+
+- Applicant name.
+- Email address.
+- Mobile number.
+- Requested role.
+- Department.
+- Application date.
+- Email verification status.
+- Application status.
+
+Provide two primary actions:
+
+APPROVE APPLICATION.
+
+REJECT APPLICATION.
+
+Provide an additional action:
+
+BLOCK EMAIL.
+
+FACULTY APPROVAL WORKFLOW:
+
+When faculty clicks APPROVE:
+
+1. Verify that the application has a valid email verification status.
+2. Check that the email is not blocked.
+3. Check that no conflicting active account exists.
+4. Create or activate the administrator account.
+5. Assign the faculty-approved role.
+6. Grant only the permissions associated with that role.
+7. Record the approval in the audit log.
+8. Send an approval email.
+
+Approval email:
+
+Subject: Japanese Club Administrator Registration Approved
+
+Dear [Name],
+
+Your administrator registration for the Japanese Club website has been approved.
+
+Your account is now active.
+
+You can access the administrator portal using your registered email address.
+
+Thank you for contributing to the Japanese Club.
+
+Regards,
+Japanese Club Faculty Administration.
+
+FACULTY REJECTION WORKFLOW:
+
+When faculty clicks REJECT:
+
+1. Mark the application as rejected.
+2. Do not activate an administrator account.
+3. Record the decision.
+4. Allow faculty to add an internal reason.
+5. Send a professional rejection notification.
+
+BLOCK EMAIL WORKFLOW:
+
+When faculty identifies a suspicious or unauthorized applicant:
+
+1. Click BLOCK EMAIL.
+2. Confirm the action.
+3. Record the reason.
+4. Add the normalized email address to the blocked email list.
+5. Prevent further administrator applications using that address.
+6. Record the action in the audit log.
+7. Notify the applicant through an appropriate security notification.
+
+Blocked email addresses must not bypass restrictions through uppercase/lowercase variations or whitespace.
+
+Only faculty members can unblock an email address.
+
+==================================================
+05. ADMINISTRATOR REGISTRATION WARNING EMAIL
+==================================================
+
+Implement the requested warning notification.
+
+When an administrator application is rejected or an email is blocked, send a professional notification explaining that the application was not approved.
+
+Suggested warning:
+
+Subject: Important Notice – Japanese Club Administrator Access
+
+Dear [Name],
+
+Your request for administrator access to the Japanese Club management portal has not been approved.
+
+Only individuals authorized by the faculty administration can receive administrative access.
+
+Please do not submit repeated unauthorized applications.
+
+Repeated suspicious or unauthorized registration attempts may result in further restrictions and escalation to the faculty administration under college policies.
+
+Regards,
+Japanese Club Faculty Administration.
+
+IMPORTANT:
+
+Do not threaten students or claim that disciplinary action has already occurred.
+
+The faculty must decide any further action according to actual college policy.
+
+Implement rate limiting and suspicious registration detection.
+
+Avoid sending repeated warning emails to the same address for every automated retry.
+
+==================================================
+06. MULTI-ADMIN MANAGEMENT
+==================================================
+
+Support multiple approved administrators.
+
+Every administrator must have a separate account.
+
+Faculty should be able to:
+
+- View all administrators.
+- Search by name.
+- Search by email.
+- Filter by role.
+- Filter by account status.
+- Change administrator roles.
+- Update permissions.
+- Suspend accounts.
+- Reactivate accounts.
+- Revoke access.
+- Review registration history.
+- Review last login.
+- Review administrator activity.
+
+Do not share one common administrator password.
+
+Do not store passwords in plaintext.
+
+Use secure password hashing.
+
+Implement secure password reset.
+
+Implement session expiration and logout.
+
+When an administrator is suspended or revoked, invalidate their active sessions.
+
+==================================================
+07. JLPT STUDENT REGISTRATION PORTAL
+==================================================
+
+This is another critical module.
+
+Build a separate JLPT Student Registration Portal.
+
+The portal must support approximately 1,000 student registrations.
+
+It must be connected to the faculty/admin control center.
+
+PUBLIC REGISTRATION PAGE:
+
+Create a registration landing page.
+
+Heading:
+
+JLPT STUDENT REGISTRATION
+
+Japanese heading:
+
+日本語能力試験 登録
+
+Description:
+
+Register for the Japanese Club's JLPT-related student registration program.
+
+Show:
+
+- Registration status.
+- Registration opening date.
+- Registration closing date.
+- Available registration capacity.
+- Registration instructions.
+- Eligibility information.
+- Frequently asked questions.
+
+The registration form must be visible only when faculty-authorized registration is open.
+
+==================================================
+08. STUDENT REGISTRATION FORM
+==================================================
+
+Collect the following information.
+
+PERSONAL INFORMATION:
+
+1. Full name.
+2. College email address.
+3. Personal email address.
+4. Mobile number.
+
+COLLEGE INFORMATION:
+
+5. USN.
+6. Branch / Department.
+7. Section.
+8. Current year of study.
+9. Expected year of graduation.
+
+JLPT INFORMATION:
+
+10. Interested JLPT level:
+    - N5.
+    - N4.
+    - N3.
+    - N2.
+    - N1.
+    - Not yet decided.
+
+11. Previous JLPT experience:
+    - First time.
+    - Previously attempted.
+    - Previously passed.
+
+12. Additional information or requirements.
+
+13. Consent to the collection and use of registration information.
+
+FORM REQUIREMENTS:
+
+- All required fields must be validated.
+- College email must have a valid format.
+- Personal email must have a valid format.
+- USN must be validated against the configured college format.
+- Mobile number must be validated.
+- Graduation year must be logically valid.
+- Duplicate student registrations must be prevented.
+- Email verification must be implemented.
+- Show clear field-specific errors.
+- Save valid registrations to the database.
+
+Use the USN and verified college email as important duplicate-detection keys.
+
+Do not assume every student's USN format is identical. Make the format configurable.
+
+PERSONAL EMAIL:
+
+Allow students to provide a personal email separately from their college email.
+
+Do not reject a student simply because their personal email uses Gmail, Outlook, or another provider.
+
+==================================================
+09. STUDENT REGISTRATION STATUS
+==================================================
+
+After submitting the form:
+
+1. Validate all information.
+2. Verify the student's college email.
+3. Check duplicate records.
+4. Check whether registration is currently open.
+5. Check the registration capacity.
+6. Save the record.
+7. Generate a unique registration reference ID.
+8. Display a confirmation page.
+9. Send a confirmation email.
+
+Example:
+
+Registration Successful!
+
+Thank you for registering for the Japanese Club JLPT Student Portal.
+
+Your registration reference:
+
+JLPT-2026-0001
+
+Your details have been submitted successfully.
+
+You will receive further updates through your registered email address.
+
+Do not claim registration is successful unless the database transaction has actually completed.
+
+Support registration statuses:
+
+- PENDING_VERIFICATION.
+- REGISTERED.
+- UNDER_REVIEW.
+- APPROVED.
+- REJECTED.
+- WAITLISTED.
+- CANCELLED.
+
+Faculty and authorized administrators must be able to change statuses.
+
+==================================================
+10. FACULTY CONTROL OVER JLPT REGISTRATION
+==================================================
+
+Faculty must have complete control over the student registration portal.
+
+Create a section called:
+
+JLPT REGISTRATION CONTROL CENTER.
+
+Controls:
+
+1. Enable registration.
+2. Disable registration.
+3. Open registration.
+4. Close registration.
+5. Set registration start date.
+6. Set registration end date.
+7. Set maximum registration capacity.
+8. Configure required form fields.
+9. Configure optional form fields.
+10. Configure allowed JLPT levels.
+11. Enable or disable email verification.
+12. View registration statistics.
+13. Export student data.
+14. Manage individual student registrations.
+
+REGISTRATION TOGGLE:
+
+When faculty enables registration:
+
+- The registration form becomes available.
+- Students can submit new registrations.
+- Registration status becomes OPEN.
+
+When faculty disables registration:
+
+- New submissions are blocked on the server.
+- Students see a registration-closed page.
+- Previously submitted records remain available.
+- Faculty and authorized administrators can still access the records.
+
+Display a clear message:
+
+"JLPT student registration is currently closed. Please check the website for future announcements."
+
+IMPORTANT:
+
+The registration toggle must be controlled by the backend database.
+
+Do not implement it as a frontend-only button.
+
+The backend must reject submissions whenever registration is closed, even if someone tries to submit an old form or directly calls the API.
+
+REGISTRATION CAPACITY:
+
+Default capacity: 1,000 students.
+
+Faculty must be able to change this number.
+
+Prevent over-registration.
+
+Use atomic database transactions or equivalent concurrency-safe logic so simultaneous registrations cannot exceed the configured capacity.
+
+When capacity is reached:
+
+- Automatically close registration or mark subsequent eligible applicants as waitlisted, according to faculty settings.
+- Display a registration-full message.
+- Notify faculty.
+
+==================================================
+11. STUDENT MANAGEMENT DASHBOARD
+==================================================
+
+Create a simple and easy-to-understand student management interface.
+
+The faculty should not need advanced technical knowledge.
+
+Show statistics:
+
+- Total registered students.
+- Verified registrations.
+- Pending verification.
+- Approved students.
+- Rejected registrations.
+- Waitlisted students.
+- Registration capacity remaining.
+- Registrations by branch.
+- Registrations by section.
+- Registrations by year.
+- Registrations by JLPT level.
+
+Example dashboard:
+
+TOTAL STUDENTS: 1,000
+
+REGISTERED: 850
+
+PENDING VERIFICATION: 70
+
+WAITLISTED: 80
+
+CAPACITY: 1,000
+
+These are example dashboard values, not actual records.
+
+STUDENT TABLE:
+
+Display:
+
+- Registration ID.
+- Student name.
+- USN.
+- College email.
+- Personal email.
+- Branch.
+- Section.
+- Current year.
+- Graduation year.
+- JLPT level.
+- Registration date.
+- Verification status.
+- Application status.
+
+ADMIN ACTIONS:
+
+- View student details.
+- Search students.
+- Filter records.
+- Edit permitted information.
+- Approve registrations.
+- Reject registrations.
+- Change status.
+- Export records.
+- View registration history.
+- Add internal notes.
+
+Only authorized roles can modify student records.
+
+Maintain a history of important changes.
+
+==================================================
+12. SIMPLE ADMIN INTERFACE
+==================================================
+
+The administration interface must be extremely easy to use.
+
+Faculty members should not need programming knowledge.
+
+Use plain language.
+
+Examples:
+
+Instead of technical terminology:
+
+"Toggle registration_enabled"
+
+Display:
+
+"Open Student Registration"
+
+Instead of:
+
+"Pending application state"
+
+Display:
+
+"Waiting for Faculty Approval"
+
+Instead of:
+
+"Revoke authorization"
+
+Display:
+
+"Remove Admin Access"
+
+Include confirmation dialogs for sensitive actions.
+
+Use clear success and error messages.
+
+Provide a dashboard with straightforward statistics and action buttons.
+
+==================================================
+13. EMAIL NOTIFICATION SYSTEM
+==================================================
+
+Implement transactional email notifications.
+
+Email events:
+
+ADMIN:
+- Registration received.
+- Email verification.
+- Application approved.
+- Application rejected.
+- Account suspended.
+- Account restored.
+- Password reset.
+- Security warning.
+
+STUDENTS:
+- Registration confirmation.
+- Email verification.
+- Registration status update.
+- Registration closed notification where appropriate.
+- Event registration confirmation.
+- Event reminders where configured.
+
+FACULTY:
+- New administrator application.
+- Suspicious registration attempt.
+- Registration capacity reached.
+- Important system security alerts.
+
+Use a secure email provider.
+
+Store API keys in backend environment variables or a secure secrets manager.
+
+Never expose email service credentials in frontend code.
+
+Implement retry handling and email delivery logs.
+
+Avoid sending duplicate emails.
+
+==================================================
+14. EVENT REGISTRATION AND DIGITAL CHECK-IN
+==================================================
+
+Integrate the existing events system with the admin platform.
+
+Authorized admins can:
+
+- Create events.
+- Edit events.
+- Publish events.
+- Close registration.
+- Set event capacity.
+- View participants.
+- Export participant lists.
+
+Students can:
+
+- Register for events.
+- View their registration.
+- Cancel if allowed.
+
+DIGITAL CHECK-IN:
+
+- Generate a unique QR code for each event registration.
+- Allow authorized event staff to scan the QR code.
+- Validate the registration against the backend.
+- Mark attendance.
+- Prevent duplicate check-ins.
+- Record date and time.
+
+Provide manual check-in as a fallback.
+
+==================================================
+15. INTERACTIVE JAPANESE LEARNING LAB
+==================================================
+
+Build a Japanese language learning environment.
+
+Include:
+
+- Hiragana practice.
+- Katakana practice.
+- Kanji practice.
+- Vocabulary.
+- Pronunciation.
+- Grammar.
+- JLPT N5 to N1 learning resources.
+- Quizzes.
+- Flashcards.
+- Progress tracking.
+
+Authorized Learning Coordinators can manage learning content.
+
+Students can access learning materials through the student portal.
+
+Keep this module independent from official JLPT examination registration.
+
+==================================================
+16. ANIME & MANGA DISCOVERY
+==================================================
+
+Create a dedicated anime and manga discovery module.
+
+Include:
+
+- Anime recommendations.
+- Manga recommendations.
+- Genre categories.
+- Community recommendations.
+- Member reviews.
+- Watchlists.
+- Reading lists.
+
+Authorized moderators can review and moderate submissions.
+
+Do not host copyrighted anime episodes or manga chapters.
+
+==================================================
+17. ADMIN CONTROL CENTER DESIGN
+==================================================
+
+Create a sophisticated but professional interface.
+
+Visual direction:
+
+- Dark navy and charcoal surfaces.
+- Japanese crimson accents.
+- White typography.
+- Subtle purple highlights.
+- Clean tables.
+- Professional charts.
+- Clear status labels.
+- Simple navigation.
+
+Use the same Japanese Club identity as the public website.
+
+ADMIN DASHBOARD LAYOUT:
+
+Sidebar:
+
+- Dashboard.
+- Admin Applications.
+- Administrators.
+- Faculty Management.
+- Student Registration.
+- JLPT Settings.
+- Events.
+- Attendance.
+- Learning Lab.
+- Anime & Manga.
+- Announcements.
+- Gallery.
+- Audit Logs.
+- Settings.
+
+Top navigation:
+
+- Page title.
+- Global search.
+- Notifications.
+- Language switcher.
+- Logged-in profile.
+
+Dashboard overview:
+
+- Total administrators.
+- Pending admin approvals.
+- Total student registrations.
+- Registration availability.
+- Event registrations.
+- Recent activity.
+
+Use clear tables and filters.
+
+Avoid unnecessary visual effects inside administrative screens.
+
+Prioritize usability and clarity.
+
+==================================================
+18. SECURITY REQUIREMENTS
+==================================================
+
+This system handles student and administrator personal information.
+
+Security is mandatory.
+
+Implement:
+
+1. Server-side authentication.
+2. Server-side role-based authorization.
+3. Secure password hashing using Argon2id or bcrypt.
+4. Email verification.
+5. Faculty MFA.
+6. Secure password reset.
+7. Session expiration.
+8. Rate limiting.
+9. Login attempt protection.
+10. Input validation.
+11. SQL injection prevention.
+12. XSS protection.
+13. CSRF protection where applicable.
+14. Secure cookies.
+15. HTTPS.
+16. Audit logging.
+17. Duplicate registration protection.
+18. Account suspension.
+19. Secure file uploads.
+20. Protection against unauthorized API access.
+
+Never store plaintext passwords.
+
+Never expose student information through public APIs.
+
+Never put secret keys in frontend source code.
+
+Never rely on hidden URLs as access control.
+
+Implement least-privilege access.
+
+For sensitive operations such as blocking admins, changing roles, exporting personal data, or changing registration availability, record who performed the action and when.
+
+Follow applicable Indian data protection requirements, including appropriate consent, privacy notices, data minimization, retention and deletion procedures.
+
+==================================================
+19. DATABASE DESIGN
+==================================================
+
+Design a normalized database.
+
+Suggested entities:
+
+1. faculty_members
+2. admin_applications
+3. administrators
+4. admin_roles
+5. permissions
+6. admin_role_permissions
+7. blocked_emails
+8. students
+9. student_registrations
+10. jlpt_registration_settings
+11. email_verifications
+12. notifications
+13. events
+14. event_registrations
+15. event_attendance
+16. learning_modules
+17. quizzes
+18. learning_progress
+19. anime_recommendations
+20. announcements
+21. audit_logs
+22. login_history
+
+Use proper:
+
+- Primary keys.
+- Foreign keys.
+- Unique constraints.
+- Indexes.
+- Timestamps.
+- Status fields.
+
+Separate authentication records from profile information where appropriate.
+
+Avoid duplicate student and administrator accounts.
+
+Ensure student registration records can be exported without exposing password or authentication information.
+
+==================================================
+20. RECOMMENDED TECHNICAL ARCHITECTURE
+==================================================
+
+Build this as a production-oriented application.
+
+Frontend:
+- React.
+- TypeScript.
+- Vite.
+- Tailwind CSS.
+- Framer Motion.
+- React Router.
+- React Hook Form.
+- Zod.
+
+Backend:
+- Java Spring Boot.
+- REST APIs.
+- Spring Security.
+- Spring Data JPA.
+- Hibernate.
+
+Database:
+- PostgreSQL.
+
+Email:
+- Secure transactional email provider.
+
+File storage:
+- Secure object storage for authorized images and documents.
+
+Authentication:
+- Secure session-based authentication or properly implemented token authentication.
+- Role-based authorization.
+
+The frontend and backend must be separate logical layers.
+
+If Google AI Studio generates a different stack, preserve all the functional and security requirements and explain the architectural changes.
+
+Do not replace real database operations with localStorage.
+
+Local storage can be used for non-sensitive interface preferences only.
+
+==================================================
+21. REQUIRED ADMINISTRATIVE WORKFLOWS
+==================================================
+
+Implement and test these workflows.
+
+WORKFLOW A: NEW ADMIN REGISTRATION
+
+Footer Admin Portal
+→ Administrator Registration
+→ Enter details
+→ Verify email
+→ Application submitted
+→ Pending Faculty Approval
+→ Faculty reviews application
+→ Approve or reject
+→ Email notification
+→ Approved administrator can log in.
+
+WORKFLOW B: SUSPICIOUS ADMIN APPLICATION
+
+Footer Admin Portal
+→ Applicant enters details
+→ Faculty identifies unauthorized applicant
+→ Reject or block email
+→ Account remains inactive
+→ Warning notification sent
+→ Audit record created
+→ Further attempts restricted.
+
+WORKFLOW C: STUDENT JLPT REGISTRATION
+
+Open JLPT Portal
+→ Check registration availability
+→ Enter student information
+→ Verify college email
+→ Validate USN and other details
+→ Check duplicate records
+→ Check capacity
+→ Save registration
+→ Generate reference ID
+→ Send confirmation email
+→ Display registration status.
+
+WORKFLOW D: FACULTY CLOSES REGISTRATION
+
+Faculty Dashboard
+→ JLPT Registration Control Center
+→ Click Close Registration
+→ Confirm action
+→ Backend changes registration status
+→ Student form becomes unavailable
+→ Existing registrations remain accessible
+→ Students see registration closed message.
+
+WORKFLOW E: FACULTY MANAGES ADMINISTRATORS
+
+Faculty Dashboard
+→ Administrator Management
+→ Search administrator
+→ View account and assigned role
+→ Change role or suspend account
+→ Confirm action
+→ Update permissions
+→ Invalidate active sessions when required
+→ Record audit log.
+
+==================================================
+22. TESTING AND ACCEPTANCE CRITERIA
+==================================================
+
+Do not declare the platform complete until the following tests pass.
+
+ADMIN TESTS:
+
+- Unapproved admins cannot log in.
+- Email verification is required.
+- Faculty approval activates the correct role.
+- Rejected admins cannot access protected pages.
+- Blocked emails cannot register again.
+- Admins cannot grant themselves higher permissions.
+- Suspended admins lose access.
+- Faculty can manage multiple admins.
+
+STUDENT TESTS:
+
+- Valid registrations are accepted.
+- Invalid emails are rejected.
+- Duplicate USNs are prevented.
+- Duplicate college email registrations are prevented.
+- Registration closure blocks submissions at the backend.
+- Registration capacity cannot be exceeded.
+- Student data remains persistent.
+- Students cannot access admin routes.
+
+CAPACITY TESTS:
+
+Simulate 1,000 valid student registrations.
+
+Test concurrent submissions near the registration limit.
+
+Confirm that no registration exceeds the configured capacity.
+
+Test CSV export with 1,000 records.
+
+SECURITY TESTS:
+
+- Unauthorized API calls.
+- Privilege escalation.
+- Session expiration.
+- Password reset.
+- Rate limiting.
+- Invalid registration attempts.
+- Unauthorized student data access.
+
+==================================================
+23. IMPORTANT IMPLEMENTATION INSTRUCTIONS FOR GOOGLE AI STUDIO
+==================================================
+
+Before writing code:
+
+1. Inspect the existing project structure.
+2. Identify the current frontend framework.
+3. Preserve existing website pages and visual identity.
+4. Plan the backend architecture.
+5. Design the database schema.
+6. Implement authentication and authorization.
+7. Build the admin approval workflow.
+8. Build the student JLPT registration workflow.
+9. Integrate email notifications.
+10. Build the dashboard interfaces.
+11. Test all critical workflows.
+
+Do not delete or overwrite existing website functionality.
+
+Do not create a disconnected frontend mockup.
+
+Do not use fake authentication.
+
+Do not store all student records in browser localStorage.
+
+Do not create public faculty registration.
+
+Do not allow an administrator to approve their own application.
+
+Do not create a backdoor administrator account.
+
+Do not expose confidential student information.
+
+Do not claim email notifications are operational unless a real email provider is configured.
+
+If an external credential or provider configuration is missing, create the integration structure and clearly identify the required environment variables.
+
+Build the system incrementally, but ensure that each completed feature is connected to the actual backend and database.
+
+FINAL PRIORITY:
+
+1. Secure Faculty Authentication.
+2. Admin Registration and Faculty Approval.
+3. Multi-Admin Role Management.
+4. JLPT Student Registration.
+5. Faculty Registration Controls.
+6. Student Data Management.
+7. Email Notifications.
+8. Event Registration and QR Attendance.
+9. Japanese Learning Lab.
+10. Anime and Manga Discovery.
+
+The Faculty Control Center and JLPT Student Registration Portal are the highest-priority components.
+
+The system must be simple enough for faculty members to operate without technical knowledge, while secure enough to protect approximately 1,000 student records and multiple administrator accounts.
+
+FINAL GOAL:
+
+Create a complete Japanese Club digital management ecosystem, not merely a website.
+
+One platform.
+Multiple administrators.
+Faculty-controlled access.
+Centralized student registration.
+Secure student information.
+Simple management.
+Complete accountability.

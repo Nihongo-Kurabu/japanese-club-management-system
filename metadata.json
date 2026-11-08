@@ -1,0 +1,8 @@
+{
+  "name": "Komorebi - Official Japanese Club",
+  "description": "Discover the beauty of Japanese culture, language, anime, and traditions with the official college Japanese Club.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
