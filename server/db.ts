@@ -72,7 +72,7 @@ export interface BlockedEmail {
 
 export interface StudentRegistration {
   id: string;
-  referenceId: string; // e.g. JLPT-2026-0001
+  referenceId: string;
   fullName: string;
   collegeEmail: string;
   personalEmail: string;
@@ -94,7 +94,7 @@ export interface StudentRegistration {
 }
 
 export interface JlptSettings {
-  isEnabled: boolean; // Master toggle
+  isEnabled: boolean;
   status: 'OPEN' | 'CLOSED';
   startDate: string;
   endDate: string;
@@ -184,22 +184,39 @@ export interface DatabaseSchema {
   animeManga: AnimeMangaItem[];
   auditLogs: AuditLog[];
   emailLogs: TransactionalEmail[];
-  activeSessions: Record<string, { email: string; role: string; roleId?: string; permissions: string[]; expiresAt: number }>;
+  activeSessions: Record<string, {
+    email: string;
+    role: string;
+    roleId?: string;
+    permissions: string[];
+    expiresAt: number;
+  }>;
 }
 
 const DATA_DIR = path.resolve(process.cwd(), 'data');
 const DB_FILE = path.join(DATA_DIR, 'database.json');
 
-// Password hashing helper
-export function hashPassword(password: string, salt?: string): { hash: string; salt: string } {
+export function hashPassword(
+  password: string,
+  salt?: string
+): { hash: string; salt: string } {
   const finalSalt = salt || crypto.randomBytes(16).toString('hex');
   const hash = crypto.scryptSync(password, finalSalt, 64).toString('hex');
+
   return { hash, salt: finalSalt };
 }
 
-export function verifyPassword(password: string, hash: string, salt: string): boolean {
+export function verifyPassword(
+  password: string,
+  hash: string,
+  salt: string
+): boolean {
   const calculated = crypto.scryptSync(password, salt, 64).toString('hex');
-  return crypto.timingSafeEqual(Buffer.from(hash, 'hex'), Buffer.from(calculated, 'hex'));
+
+  return crypto.timingSafeEqual(
+    Buffer.from(hash, 'hex'),
+    Buffer.from(calculated, 'hex')
+  );
 }
 
 export class JsonDatabase {
@@ -209,12 +226,47 @@ export class JsonDatabase {
     if (!fs.existsSync(DATA_DIR)) {
       fs.mkdirSync(DATA_DIR, { recursive: true });
     }
+
     if (fs.existsSync(DB_FILE)) {
       try {
         const raw = fs.readFileSync(DB_FILE, 'utf-8');
-        this.data = JSON.parse(raw);
+        const parsed = JSON.parse(raw) as Partial<DatabaseSchema>;
+        const defaults = this.getDefaultData();
+
+        this.data = { ...defaults, ...parsed };
+
+        this.data.faculty ??= defaults.faculty;
+        this.data.roles ??= defaults.roles;
+        this.data.adminApplications ??= [];
+        this.data.administrators ??= defaults.administrators;
+        this.data.blockedEmails ??= [];
+        this.data.students ??= [];
+        this.data.jlptSettings ??= defaults.jlptSettings;
+        this.data.events ??= [];
+        this.data.eventAttendees ??= [];
+        this.data.animeManga ??= [];
+        this.data.auditLogs ??= [];
+        this.data.emailLogs ??= [];
+        this.data.activeSessions ??= {};
+
+        this.data.eventAttendees = this.data.eventAttendees.filter(Boolean);
+        this.data.events = this.data.events.filter(Boolean);
+
+        for (const event of this.data.events) {
+          const actualCount = this.data.eventAttendees.filter(
+            (attendee) => attendee.eventId === event.id
+          ).length;
+
+          event.registeredCount = actualCount;
+        }
+
+        this.save();
       } catch (err) {
-        console.error('Failed to parse database.json, initializing fresh store:', err);
+        console.error(
+          'Failed to parse database.json, initializing fresh store:',
+          err
+        );
+
         this.data = this.getDefaultData();
         this.save();
       }
@@ -226,56 +278,103 @@ export class JsonDatabase {
 
   private getDefaultData(): DatabaseSchema {
     const facultySalt = crypto.randomBytes(16).toString('hex');
-    const facultyHash = hashPassword('Faculty@Komorebi2026!', facultySalt).hash;
+    const facultyHash = hashPassword(
+      'Faculty@Komorebi2026!',
+      facultySalt
+    ).hash;
 
     const defaultRoles: AdminRole[] = [
       {
         id: 'role-president',
         name: 'President',
         description: 'Full club authority, operations oversight, and approval decisions',
-        permissions: ['all', 'admin_view', 'admin_manage', 'student_view', 'student_manage', 'events_manage', 'announcements_manage', 'learning_manage', 'anime_manage', 'gallery_manage', 'audit_view'],
+        permissions: [
+          'all',
+          'admin_view',
+          'admin_manage',
+          'student_view',
+          'student_manage',
+          'events_view',
+          'events_manage',
+          'attendance_manage',
+          'announcements_manage',
+          'learning_manage',
+          'anime_manage',
+          'gallery_manage',
+          'audit_view'
+        ],
         isSystem: true
       },
       {
         id: 'role-vp',
         name: 'Vice President',
         description: 'Operations, cross-department coordination, and event administration',
-        permissions: ['admin_view', 'student_view', 'events_manage', 'announcements_manage', 'learning_manage', 'gallery_manage'],
+        permissions: [
+          'admin_view',
+          'student_view',
+          'events_view',
+          'events_manage',
+          'attendance_manage',
+          'announcements_manage',
+          'learning_manage',
+          'gallery_manage'
+        ],
         isSystem: true
       },
       {
         id: 'role-secretary',
         name: 'Secretary',
         description: 'Club announcements, records documentation, and minutes',
-        permissions: ['announcements_manage', 'student_view', 'events_view', 'audit_view'],
+        permissions: [
+          'announcements_manage',
+          'student_view',
+          'events_view',
+          'audit_view'
+        ],
         isSystem: true
       },
       {
         id: 'role-event-mgr',
         name: 'Event Manager',
         description: 'Create and update events, manage participant lists and digital QR check-in',
-        permissions: ['events_manage', 'attendance_manage', 'student_view'],
+        permissions: [
+          'events_view',
+          'events_manage',
+          'attendance_manage',
+          'student_view'
+        ],
         isSystem: true
       },
       {
         id: 'role-tech-admin',
         name: 'Technical Administrator',
         description: 'Technical platform maintenance, logs oversight, and digital workflows',
-        permissions: ['tech_manage', 'audit_view', 'events_view', 'student_view'],
+        permissions: [
+          'tech_manage',
+          'audit_view',
+          'events_view',
+          'student_view'
+        ],
         isSystem: true
       },
       {
         id: 'role-anime-mod',
         name: 'Anime Group Moderator',
         description: 'Curate anime/manga recommendations and moderate community discussions',
-        permissions: ['anime_manage', 'announcements_manage'],
+        permissions: [
+          'anime_manage',
+          'announcements_manage'
+        ],
         isSystem: true
       },
       {
         id: 'role-learning-coord',
         name: 'Learning Coordinator',
         description: 'Manage Japanese language resources, quizzes, and JLPT study circles',
-        permissions: ['learning_manage', 'student_view'],
+        permissions: [
+          'learning_manage',
+          'student_view'
+        ],
         isSystem: true
       },
       {
@@ -289,7 +388,10 @@ export class JsonDatabase {
         id: 'role-general-admin',
         name: 'General Administrator',
         description: 'Basic administrative oversight and event attendance monitoring',
-        permissions: ['student_view', 'events_view'],
+        permissions: [
+          'student_view',
+          'events_view'
+        ],
         isSystem: true
       }
     ];
@@ -302,13 +404,16 @@ export class JsonDatabase {
       designation: 'Faculty Advisor & Director of Japanese Studies',
       passwordHash: facultyHash,
       salt: facultySalt,
-      mfaCode: '654321', // Secure simulation code for faculty verification
+      mfaCode: '654321',
       createdAt: new Date().toISOString()
     };
 
-    // Pre-seed an approved admin: Pranav (Technical Head)
     const pranavSalt = crypto.randomBytes(16).toString('hex');
-    const pranavHash = hashPassword('Admin@Komorebi2026!', pranavSalt).hash;
+    const pranavHash = hashPassword(
+      'Admin@Komorebi2026!',
+      pranavSalt
+    ).hash;
+
     const initialAdmin: Administrator = {
       id: 'admin-001',
       name: 'Pranav Anand',
@@ -317,7 +422,12 @@ export class JsonDatabase {
       department: 'Computer Science',
       roleId: 'role-tech-admin',
       roleName: 'Technical Administrator',
-      permissions: ['tech_manage', 'audit_view', 'events_view', 'student_view'],
+      permissions: [
+        'tech_manage',
+        'audit_view',
+        'events_view',
+        'student_view'
+      ],
       passwordHash: pranavHash,
       salt: pranavSalt,
       status: 'ACTIVE',
@@ -326,7 +436,6 @@ export class JsonDatabase {
       createdAt: new Date().toISOString()
     };
 
-    // Seed 15 diverse student registrations to test filters and exports
     const seedStudents: StudentRegistration[] = [
       {
         id: 'std-001',
@@ -432,7 +541,6 @@ export class JsonDatabase {
       }
     ];
 
-    // Seed events (zero dummy registrations, strictly starts at 0/capacity)
     const seedEvents: EventRecord[] = [
       {
         id: 'hanami-matsuri-2026',
@@ -444,7 +552,12 @@ export class JsonDatabase {
         venue: 'Campus Central Amphitheater & Zen Courtyard',
         image: 'https://images.unsplash.com/photo-1493976040374-85c8e12f0c0e?auto=format&fit=crop&w=1200&q=80',
         description: 'An evening celebration of spring featuring traditional Yukata dress codes, Japanese street food stalls (Takoyaki, Dango), Koto music performances, and lantern lighting under blooming cherry trees.',
-        highlights: ['Yukata dress-up booth', 'Authentic Matcha tea tasting', 'Live Taiko drumming demonstration', 'Origami wish-tree installation'],
+        highlights: [
+          'Yukata dress-up booth',
+          'Authentic Matcha tea tasting',
+          'Live Taiko drumming demonstration',
+          'Origami wish-tree installation'
+        ],
         capacity: 250,
         registeredCount: 182
       },
@@ -458,7 +571,11 @@ export class JsonDatabase {
         venue: 'Design Studio 4B, Humanities Building',
         image: 'https://images.unsplash.com/photo-1579783900882-c0d3dad7b119?auto=format&fit=crop&w=1200&q=80',
         description: 'Learn the ancient art of Japanese brush calligraphy (書道). Understand brush control, ink grinding on Suzuri stones, and write your own favorite Kanji on handmade Washi rice paper.',
-        highlights: ['Traditional Sumi ink & Fude brushes provided', 'Guidance on Kaisho and Gyosho styles', 'Take home your framed personalized Kanji scroll'],
+        highlights: [
+          'Traditional Sumi ink & Fude brushes provided',
+          'Guidance on Kaisho and Gyosho styles',
+          'Take home your framed personalized Kanji scroll'
+        ],
         capacity: 40,
         registeredCount: 36
       },
@@ -470,9 +587,13 @@ export class JsonDatabase {
         date: 'April 18, 2026',
         time: '6:00 PM – 9:30 PM',
         venue: 'Auditorium Hall B',
-        image: 'https://images.unsplash.com/photo-1578632767115-351597cf2477?auto=format&fit=crop&w=1200&q=80',
+        image: 'https://images.unsplash.com/photo-1578632767115-351597cf2471?auto=format&fit=crop&w=1200&q=80',
         description: 'A deep-dive analytical showcase examining anime composition, sakuga animation highlights from master studios, followed by trivia.',
-        highlights: ['Sakuga frame-by-frame breakdown', 'OST acoustic tribute session', 'Anime trivia grand championship with imported prizes'],
+        highlights: [
+          'Sakuga frame-by-frame breakdown',
+          'OST acoustic tribute session',
+          'Anime trivia grand championship with imported prizes'
+        ],
         capacity: 180,
         registeredCount: 145
       },
@@ -486,7 +607,11 @@ export class JsonDatabase {
         venue: 'Seminar Hall 201',
         image: 'https://images.unsplash.com/photo-1503899036084-c55cdd92da26?auto=format&fit=crop&w=1200&q=80',
         description: 'An interactive crash course designed for complete beginners. Master the 46 Hiragana characters and essential greetings.',
-        highlights: ['Printed Hiragana mnemonic workbooks', 'Pronunciation drill with speech feedback', 'Interactive flashcard speed challenge'],
+        highlights: [
+          'Printed Hiragana mnemonic workbooks',
+          'Pronunciation drill with speech feedback',
+          'Interactive flashcard speed challenge'
+        ],
         capacity: 60,
         registeredCount: 52
       }
@@ -565,14 +690,12 @@ export class JsonDatabase {
     };
   }
 
-  // Atomic write pattern: writes to temporary file then renames
   public save(): void {
     const tempFile = `${DB_FILE}.tmp.${Date.now()}`;
     fs.writeFileSync(tempFile, JSON.stringify(this.data, null, 2), 'utf-8');
     fs.renameSync(tempFile, DB_FILE);
   }
 
-  // Accessors
   public getFaculty(): FacultyMember[] {
     return this.data.faculty;
   }
@@ -621,26 +744,38 @@ export class JsonDatabase {
     return this.data.emailLogs;
   }
 
-  public getActiveSessions(): Record<string, { email: string; role: string; roleId?: string; permissions: string[]; expiresAt: number }> {
+  public getActiveSessions(): Record<string, {
+    email: string;
+    role: string;
+    roleId?: string;
+    permissions: string[];
+    expiresAt: number;
+  }> {
     return this.data.activeSessions;
   }
 
-  // Mutations
   public addAuditLog(entry: Omit<AuditLog, 'id' | 'timestamp'>): void {
     const log: AuditLog = {
       id: `audit-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
       timestamp: new Date().toISOString(),
       ...entry
     };
+
     this.data.auditLogs.unshift(log);
-    // Keep last 1000 logs
+
     if (this.data.auditLogs.length > 1000) {
       this.data.auditLogs = this.data.auditLogs.slice(0, 1000);
     }
+
     this.save();
   }
 
-  public logEmail(recipient: string, subject: string, eventType: string, body: string): void {
+  public logEmail(
+    recipient: string,
+    subject: string,
+    eventType: string,
+    body: string
+  ): void {
     const emailRecord: TransactionalEmail = {
       id: `mail-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
       timestamp: new Date().toISOString(),
@@ -650,15 +785,25 @@ export class JsonDatabase {
       body,
       status: 'SIMULATED'
     };
+
     this.data.emailLogs.unshift(emailRecord);
+
     if (this.data.emailLogs.length > 500) {
       this.data.emailLogs = this.data.emailLogs.slice(0, 500);
     }
+
     this.save();
   }
 
-  public updateJlptSettings(newSettings: Partial<JlptSettings>, actorEmail: string): JlptSettings {
-    this.data.jlptSettings = { ...this.data.jlptSettings, ...newSettings };
+  public updateJlptSettings(
+    newSettings: Partial<JlptSettings>,
+    actorEmail: string
+  ): JlptSettings {
+    this.data.jlptSettings = {
+      ...this.data.jlptSettings,
+      ...newSettings
+    };
+
     this.addAuditLog({
       actorEmail,
       actorRole: 'FACULTY',
@@ -666,12 +811,23 @@ export class JsonDatabase {
       targetType: 'JLPT_SETTINGS',
       details: `Updated settings: ${JSON.stringify(newSettings)}`
     });
+
     this.save();
+
     return this.data.jlptSettings;
   }
 
-  // Concurrency-safe atomic student registration
-  public registerStudent(formData: Omit<StudentRegistration, 'id' | 'referenceId' | 'registeredAt' | 'updatedAt' | 'verificationStatus' | 'applicationStatus'>): {
+  public registerStudent(
+    formData: Omit<
+      StudentRegistration,
+      | 'id'
+      | 'referenceId'
+      | 'registeredAt'
+      | 'updatedAt'
+      | 'verificationStatus'
+      | 'applicationStatus'
+    >
+  ): {
     success: boolean;
     referenceId?: string;
     student?: StudentRegistration;
@@ -680,25 +836,38 @@ export class JsonDatabase {
     const settings = this.data.jlptSettings;
 
     if (!settings.isEnabled || settings.status !== 'OPEN') {
-      return { success: false, error: 'JLPT student registration is currently closed. Please check for future announcements.' };
+      return {
+        success: false,
+        error: 'JLPT student registration is currently closed. Please check for future announcements.'
+      };
     }
 
     const normCollegeEmail = formData.collegeEmail.trim().toLowerCase();
     const normUsn = formData.usn.trim().toUpperCase();
 
-    // Check duplicate email
-    const duplicateEmail = this.data.students.find((s) => s.collegeEmail.trim().toLowerCase() === normCollegeEmail);
+    const duplicateEmail = this.data.students.find(
+      (student) =>
+        student.collegeEmail.trim().toLowerCase() === normCollegeEmail
+    );
+
     if (duplicateEmail) {
-      return { success: false, error: `A registration with college email "${formData.collegeEmail}" already exists (Ref: ${duplicateEmail.referenceId}).` };
+      return {
+        success: false,
+        error: `A registration with college email "${formData.collegeEmail}" already exists (Ref: ${duplicateEmail.referenceId}).`
+      };
     }
 
-    // Check duplicate USN
-    const duplicateUsn = this.data.students.find((s) => s.usn.trim().toUpperCase() === normUsn);
+    const duplicateUsn = this.data.students.find(
+      (student) => student.usn.trim().toUpperCase() === normUsn
+    );
+
     if (duplicateUsn) {
-      return { success: false, error: `A registration with University Seat Number "${formData.usn}" already exists (Ref: ${duplicateUsn.referenceId}).` };
+      return {
+        success: false,
+        error: `A registration with University Seat Number "${formData.usn}" already exists (Ref: ${duplicateUsn.referenceId}).`
+      };
     }
 
-    // Check capacity
     const currentCount = this.data.students.length;
     let applicationStatus: StudentRegistration['applicationStatus'] = 'REGISTERED';
 
@@ -706,12 +875,16 @@ export class JsonDatabase {
       if (settings.allowWaitlistWhenFull) {
         applicationStatus = 'WAITLISTED';
       } else {
-        return { success: false, error: `Registration capacity of ${settings.maxCapacity} students has been reached. Submissions are now closed.` };
+        return {
+          success: false,
+          error: `Registration capacity of ${settings.maxCapacity} students has been reached. Submissions are now closed.`
+        };
       }
     }
 
     const nextSeq = currentCount + 1;
     const refId = `JLPT-2026-${String(nextSeq).padStart(4, '0')}`;
+
     const newStudent: StudentRegistration = {
       id: `std-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
       referenceId: refId,
@@ -726,8 +899,10 @@ export class JsonDatabase {
 
     this.data.students.push(newStudent);
 
-    // Auto close if capacity reached and waitlist not allowed
-    if (this.data.students.length >= settings.maxCapacity && !settings.allowWaitlistWhenFull) {
+    if (
+      this.data.students.length >= settings.maxCapacity &&
+      !settings.allowWaitlistWhenFull
+    ) {
       this.data.jlptSettings.status = 'CLOSED';
     }
 
@@ -744,11 +919,210 @@ export class JsonDatabase {
       normCollegeEmail,
       `JLPT Registration Confirmation – ${refId}`,
       'STUDENT_REGISTRATION_CONFIRMATION',
-      `Dear ${formData.fullName},\n\nThank you for registering for the Komorebi Japanese Club JLPT Student Portal.\nYour registration reference is: ${refId}.\nStatus: ${applicationStatus}.\n\nRegards,\nJapanese Club Administration`
+      `Dear ${formData.fullName},
+
+Thank you for registering for the Komorebi Japanese Club JLPT Student Portal.
+Your registration reference is: ${refId}.
+Status: ${applicationStatus}.
+
+Regards,
+Japanese Club Administration`
     );
 
     this.save();
-    return { success: true, referenceId: refId, student: newStudent };
+
+    return {
+      success: true,
+      referenceId: refId,
+      student: newStudent
+    };
+  }
+
+  /**
+   * Registers one attendee for an event.
+   * This protects normal single-process Express requests, but is not
+   * a cross-process database transaction.
+   */
+  public registerEventAttendee(
+    input: Pick<
+      EventAttendee,
+      'eventId' | 'fullName' | 'collegeEmail' | 'usn' | 'ticketCode' | 'qrData'
+    >
+  ): {
+    success: boolean;
+    attendee?: EventAttendee;
+    error?: string;
+    status?:
+      | 'NOT_FOUND'
+      | 'CLOSED'
+      | 'DUPLICATE'
+      | 'FULL'
+      | 'TICKET_CONFLICT';
+  } {
+    const event = this.data.events.find(
+      (item) => item.id === input.eventId
+    );
+
+    if (!event) {
+      return {
+        success: false,
+        error: 'Event not found.',
+        status: 'NOT_FOUND'
+      };
+    }
+
+    const fullName = input.fullName.trim().replace(/\s+/g, ' ');
+    const collegeEmail = input.collegeEmail.trim().toLowerCase();
+    const usn = input.usn.trim().toUpperCase();
+    const ticketCode = input.ticketCode.trim().toUpperCase();
+
+    if (
+      !fullName ||
+      !collegeEmail ||
+      !usn ||
+      !ticketCode ||
+      !input.qrData.trim()
+    ) {
+      return {
+        success: false,
+        error: 'All attendee details are required.'
+      };
+    }
+
+    const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+    if (!emailPattern.test(collegeEmail)) {
+      return {
+        success: false,
+        error: 'Please provide a valid college email address.'
+      };
+    }
+
+    const duplicate = this.data.eventAttendees.find(
+      (attendee) =>
+        attendee.eventId === event.id &&
+        (
+          attendee.collegeEmail.trim().toLowerCase() === collegeEmail ||
+          attendee.usn.trim().toUpperCase() === usn
+        )
+    );
+
+    if (duplicate) {
+      return {
+        success: false,
+        error: 'This student is already registered for this event.',
+        status: 'DUPLICATE'
+      };
+    }
+
+    const ticketExists = this.data.eventAttendees.some(
+      (attendee) =>
+        attendee.ticketCode.toUpperCase() === ticketCode
+    );
+
+    if (ticketExists) {
+      return {
+        success: false,
+        error: 'Ticket code collision. Please generate a new ticket code.',
+        status: 'TICKET_CONFLICT'
+      };
+    }
+
+    const actualCount = this.data.eventAttendees.filter(
+      (attendee) => attendee.eventId === event.id
+    ).length;
+
+    if (
+      !Number.isFinite(event.capacity) ||
+      event.capacity < 1 ||
+      actualCount >= event.capacity
+    ) {
+      event.registeredCount = actualCount;
+      this.save();
+
+      return {
+        success: false,
+        error: 'This event has reached its registration capacity.',
+        status: 'FULL'
+      };
+    }
+
+    const attendee: EventAttendee = {
+      id: `att-${Date.now()}-${crypto.randomBytes(5).toString('hex')}`,
+      eventId: event.id,
+      eventTitle: event.title,
+      fullName,
+      collegeEmail,
+      usn,
+      ticketCode,
+      qrData: input.qrData,
+      checkedIn: false,
+      registeredAt: new Date().toISOString()
+    };
+
+    this.data.eventAttendees.push(attendee);
+    event.registeredCount = actualCount + 1;
+
+    this.save();
+
+    return {
+      success: true,
+      attendee
+    };
+  }
+
+  public getEventAttendeesByEvent(eventId: string): EventAttendee[] {
+    return this.data.eventAttendees
+      .filter((attendee) => attendee.eventId === eventId)
+      .sort((a, b) => b.registeredAt.localeCompare(a.registeredAt));
+  }
+
+  public getEventAttendeeByTicket(
+    ticketCode: string
+  ): EventAttendee | undefined {
+    const normalizedCode = ticketCode.trim().toUpperCase();
+
+    return this.data.eventAttendees.find(
+      (attendee) =>
+        attendee.ticketCode.trim().toUpperCase() === normalizedCode
+    );
+  }
+
+  public checkInEventAttendee(
+    ticketCode: string,
+    checkedInBy: string
+  ): {
+    success: boolean;
+    attendee?: EventAttendee;
+    error?: string;
+  } {
+    const attendee = this.getEventAttendeeByTicket(ticketCode);
+
+    if (!attendee) {
+      return {
+        success: false,
+        error: 'No registration was found for this ticket.'
+      };
+    }
+
+    if (attendee.checkedIn) {
+      return {
+        success: false,
+        attendee,
+        error: 'This ticket has already been checked in.'
+      };
+    }
+
+    attendee.checkedIn = true;
+    attendee.checkedInAt = new Date().toISOString();
+    attendee.checkedInBy = checkedInBy;
+
+    this.save();
+
+    return {
+      success: true,
+      attendee
+    };
   }
 }
 

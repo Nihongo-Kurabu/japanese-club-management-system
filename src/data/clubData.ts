@@ -156,7 +156,13 @@ export const LEADERSHIP_TEAM: TeamMember[] = [
         'Encourage cultural exchange and member engagement.'
       ],
 
-      socials: {}
+      socials: {
+        github: 'https://github.com/DivyamKishor',
+        portfolio: '',
+        linkedin: 'https://www.linkedin.com/in/divyam-kishor/',
+        instagram: 'https://www.instagram.com/royale_divyam/',
+        email: ''
+      }
     }
   },
 
@@ -181,7 +187,13 @@ export const LEADERSHIP_TEAM: TeamMember[] = [
         'Help maintain smooth club operations.'
       ],
 
-      socials: {}
+      socials: {
+        github: 'https://github.com/Pranav-git2005',
+        portfolio: '',
+        linkedin: 'https://www.linkedin.com/in/pranav-anand-898475338',
+        instagram: 'https://www.instagram.com/_anand.pranav?exln=a3V4NzllcDB0NW5l&utm_source=ig_contact_invite',
+        email: 'pranavanand350@gmail.com'
+      }
     }
   },
 
@@ -287,7 +299,7 @@ export const LEADERSHIP_TEAM: TeamMember[] = [
         portfolio: '',
         linkedin: 'www.linkedin.com/in/rishika-singh-32b950430',
         instagram: 'https://www.instagram.com/not_serene_?srtk=eXFoa25qYXZ5aTk1',
-        email: ''
+        email: 'rishika.siingh11@gmail.com'
       }
     }
   },
@@ -303,16 +315,24 @@ export const LEADERSHIP_TEAM: TeamMember[] = [
 
     profile: {
       about:
-        'Ankitha supports junior members by sharing guidance on Japanese culture, learning opportunities, and club traditions.',
+        'Hi! I’m Ankitha Pradhan, currently pursuing my 7th semester in the Electronics and Communication Engineering (ECE) department. I am the Student Placement Coordinator for Japanese placements at CMRIT and a JLPT N4 certified Japanese language learner. I enjoy exploring Japanese language and culture. I’m a huge anime fan, with Naruto being my all time favourite and I love listening to Japanese music.',
 
       responsibilities: [
-        'Mentor junior club members.',
-        'Share guidance on Japanese cultural practices.',
-        'Support Japanese language learning activities.',
-        'Encourage knowledge sharing between members.'
+        'As a Club Senpai, I help juniors and fellow club members with their Japanese learning journey. My responsibilities include:',
+        'Providing guidance and tips for JLPT examinations.',
+        'Sharing advice and resources for learning Japanese.',
+        'Guiding students interested in Japanese placements.',
+        'Helping students understand the Japanese placement process.',
+        'Sharing my experiences and motivating beginners to explore the language.'
       ],
 
-      socials: {}
+      socials: {
+        github: 'https://github.com/Ankitha-03',
+        portfolio: '',
+        linkedin: 'https://www.linkedin.com/in/ankitha-pradhan-4b9796254',
+        instagram: '',
+        email: 'ankitha03p@gmail.com'
+      }
     }
   },
 

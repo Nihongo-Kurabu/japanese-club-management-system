@@ -45,7 +45,7 @@ apiRouter.get('/system/status', (req: Request, res: Response) => {
 });
 
 // =========================================================
-// 2. FACULTY AUTHENTICATION (SECURE & MFA)
+// 2. FACULTY AUTHENTICATION
 // =========================================================
 apiRouter.post('/auth/faculty/login', (req: Request, res: Response) => {
   const { email, password } = req.body;
@@ -61,7 +61,10 @@ apiRouter.post('/auth/faculty/login', (req: Request, res: Response) => {
     return;
   }
 
-  const faculty = db.getFaculty().find((f) => f.email.toLowerCase() === email.trim().toLowerCase());
+  const faculty = db.getFaculty().find(
+    (f) => f.email.toLowerCase() === email.trim().toLowerCase()
+  );
+
   if (!faculty) {
     db.addAuditLog({
       actorEmail: email,
@@ -71,11 +74,13 @@ apiRouter.post('/auth/faculty/login', (req: Request, res: Response) => {
       details: 'Invalid faculty email attempt',
       ip
     });
+
     res.status(401).json({ error: 'Invalid faculty credentials.' });
     return;
   }
 
   const isValid = verifyPassword(password, faculty.passwordHash, faculty.salt);
+
   if (!isValid) {
     db.addAuditLog({
       actorEmail: email,
@@ -85,12 +90,20 @@ apiRouter.post('/auth/faculty/login', (req: Request, res: Response) => {
       details: 'Incorrect password entered',
       ip
     });
+
     res.status(401).json({ error: 'Invalid faculty credentials.' });
     return;
   }
 
-  // Trigger MFA Step
-  const mfaCode = faculty.mfaCode || '654321';
+  const mfaCode = faculty.mfaCode;
+
+  if (!mfaCode) {
+    res.status(500).json({
+      error: 'Faculty MFA is not configured. Please contact the system administrator.'
+    });
+    return;
+  }
+
   db.logEmail(
     faculty.email,
     'Faculty Portal Multi-Factor Authentication Code',
@@ -98,31 +111,41 @@ apiRouter.post('/auth/faculty/login', (req: Request, res: Response) => {
     `Your one-time MFA access code is: ${mfaCode}. It is valid for this login session.`
   );
 
+  db.save();
+
   res.json({
     requiresMfa: true,
     mfaRequired: true,
     email: faculty.email,
     name: faculty.name,
-    message: 'Password verified. Multi-factor verification code dispatched to official faculty channel.'
+    message: 'Password verified. Check the configured faculty email channel for your MFA code.'
   });
 });
 
 apiRouter.post('/auth/faculty/verify-mfa', (req: Request, res: Response) => {
   const { email, mfaCode } = req.body;
-  const faculty = db.getFaculty().find((f) => f.email.toLowerCase() === (email || '').trim().toLowerCase());
+
+  if (typeof email !== 'string' || typeof mfaCode !== 'string' || !mfaCode.trim()) {
+    res.status(400).json({ error: 'Email and MFA code are required.' });
+    return;
+  }
+
+  const faculty = db.getFaculty().find(
+    (f) => f.email.toLowerCase() === email.trim().toLowerCase()
+  );
 
   if (!faculty) {
     res.status(401).json({ error: 'Faculty account not found.' });
     return;
   }
 
-  if (!mfaCode || (mfaCode.trim() !== faculty.mfaCode && mfaCode.trim() !== '654321')) {
+  if (!faculty.mfaCode || mfaCode.trim() !== faculty.mfaCode) {
     res.status(401).json({ error: 'Invalid MFA verification code.' });
     return;
   }
 
-  // Success - issue full faculty session token
   const token = createSessionToken(faculty.email, 'FACULTY', undefined, ['all']);
+
   faculty.lastLogin = new Date().toISOString();
   db.save();
 
@@ -134,6 +157,8 @@ apiRouter.post('/auth/faculty/verify-mfa', (req: Request, res: Response) => {
     details: 'Faculty successfully authenticated with MFA verification',
     ip: req.ip
   });
+
+  db.save();
 
   res.json({
     token,
@@ -151,32 +176,60 @@ apiRouter.post('/auth/faculty/verify-mfa', (req: Request, res: Response) => {
 // 3. ADMINISTRATOR SELF-REGISTRATION & VERIFICATION
 // =========================================================
 apiRouter.post('/auth/admin/register', (req: Request, res: Response) => {
-  const { name, email, mobile, department, requestedRoleId, reason, password, confirmPassword } = req.body;
+  const {
+    name,
+    email,
+    mobile,
+    department,
+    requestedRoleId,
+    reason,
+    password,
+    confirmPassword
+  } = req.body;
+
   const ip = req.ip || 'unknown';
 
   if (!checkRateLimit(`admin_reg_${ip}`, 8, 60000)) {
-    res.status(429).json({ error: 'Too many registration requests from this network. Please wait.' });
+    res.status(429).json({
+      error: 'Too many registration requests from this network. Please wait.'
+    });
     return;
   }
 
-  if (!name || !email || !mobile || !requestedRoleId || !password) {
+  if (
+    typeof name !== 'string' ||
+    typeof email !== 'string' ||
+    typeof mobile !== 'string' ||
+    typeof requestedRoleId !== 'string' ||
+    typeof password !== 'string' ||
+    !name.trim() ||
+    !email.trim() ||
+    !mobile.trim() ||
+    !requestedRoleId.trim() ||
+    !password
+  ) {
     res.status(400).json({ error: 'All required fields must be provided.' });
     return;
   }
 
   if (password !== confirmPassword) {
-    res.status(400).json({ error: 'Password and confirmation password do not match.' });
+    res.status(400).json({
+      error: 'Password and confirmation password do not match.'
+    });
     return;
   }
 
   if (password.length < 8) {
-    res.status(400).json({ error: 'Password must be at least 8 characters long.' });
+    res.status(400).json({
+      error: 'Password must be at least 8 characters long.'
+    });
+    return;
   }
 
   const normEmail = normalizeEmail(email);
 
-  // Check blocked emails
   const blockedList = db.getBlockedEmails().map((b) => b.email);
+
   if (isEmailBlocked(normEmail, blockedList)) {
     db.addAuditLog({
       actorEmail: normEmail,
@@ -194,43 +247,59 @@ apiRouter.post('/auth/admin/register', (req: Request, res: Response) => {
       `Dear ${name},\n\nYour request for administrator access to the Japanese Club management portal has not been approved.\nOnly individuals authorized by the faculty administration can receive administrative access.\nPlease do not submit repeated unauthorized applications.\n\nRegards,\nJapanese Club Faculty Administration`
     );
 
+    db.save();
+
     res.status(403).json({
       error: 'This email address is restricted from administrator registration. Please consult the faculty administration.'
     });
     return;
   }
 
-  // Check existing approved admin
-  const existingAdmin = db.getAdministrators().find((a) => a.email.toLowerCase() === normEmail);
+  const existingAdmin = db.getAdministrators().find(
+    (a) => a.email.toLowerCase() === normEmail
+  );
+
   if (existingAdmin) {
-    res.status(400).json({ error: 'An administrator account already exists with this email address.' });
+    res.status(400).json({
+      error: 'An administrator account already exists with this email address.'
+    });
     return;
   }
 
-  // Check existing pending application
-  const existingApp = db.getAdminApplications().find((app) => app.email.toLowerCase() === normEmail && app.status === 'PENDING_APPROVAL');
+  const existingApp = db.getAdminApplications().find(
+    (app) =>
+      app.email.toLowerCase() === normEmail &&
+      ['PENDING_EMAIL_VERIFICATION', 'PENDING_APPROVAL'].includes(app.status)
+  );
+
   if (existingApp) {
     res.status(400).json({
-      error: 'An administrator application for this email is already awaiting faculty approval.'
+      error: 'An administrator application for this email is already pending.'
     });
     return;
   }
 
   const role = db.getRoles().find((r) => r.id === requestedRoleId);
-  const roleName = role ? role.name : 'General Administrator';
+
+  if (!role) {
+    res.status(400).json({ error: 'Please select a valid administrator role.' });
+    return;
+  }
 
   const { hash, salt } = hashPassword(password);
-  const verificationCode = String(Math.floor(100000 + Math.random() * 900000));
+  const verificationCode = String(
+    Math.floor(100000 + Math.random() * 900000)
+  );
 
   const application = {
     id: `app-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
     name: name.trim(),
     email: normEmail,
     mobile: mobile.trim(),
-    department: (department || '').trim(),
+    department: typeof department === 'string' ? department.trim() : '',
     requestedRoleId,
-    requestedRoleName: roleName,
-    reason: (reason || '').trim(),
+    requestedRoleName: role.name,
+    reason: typeof reason === 'string' ? reason.trim() : '',
     passwordHash: hash,
     salt,
     verificationCode,
@@ -251,7 +320,7 @@ apiRouter.post('/auth/admin/register', (req: Request, res: Response) => {
 
   db.save();
 
-  res.json({
+  res.status(201).json({
     applicationId: application.id,
     email: normEmail,
     message: 'Verification code sent to your official email. Please verify to submit to faculty.'
@@ -260,16 +329,36 @@ apiRouter.post('/auth/admin/register', (req: Request, res: Response) => {
 
 apiRouter.post('/auth/admin/verify-email', (req: Request, res: Response) => {
   const { email, code } = req.body;
-  const normEmail = normalizeEmail(email || '');
 
-  const app = db.getAdminApplications().find((a) => a.email === normEmail && a.status === 'PENDING_EMAIL_VERIFICATION');
-  if (!app) {
-    res.status(400).json({ error: 'No pending email verification found for this address.' });
+  if (
+    typeof email !== 'string' ||
+    typeof code !== 'string' ||
+    !email.trim() ||
+    !code.trim()
+  ) {
+    res.status(400).json({ error: 'Email and verification code are required.' });
     return;
   }
 
-  if (app.verificationCode !== (code || '').trim() && (code || '').trim() !== '123456') {
-    res.status(400).json({ error: 'Incorrect verification code. Please check your email.' });
+  const normEmail = normalizeEmail(email);
+
+  const app = db.getAdminApplications().find(
+    (a) =>
+      a.email === normEmail &&
+      a.status === 'PENDING_EMAIL_VERIFICATION'
+  );
+
+  if (!app) {
+    res.status(400).json({
+      error: 'No pending email verification found for this address.'
+    });
+    return;
+  }
+
+  if (app.verificationCode !== code.trim()) {
+    res.status(400).json({
+      error: 'Incorrect verification code. Please check your email.'
+    });
     return;
   }
 
@@ -286,7 +375,6 @@ apiRouter.post('/auth/admin/verify-email', (req: Request, res: Response) => {
     details: `Applicant ${app.name} verified email. Application status set to PENDING_APPROVAL for role: ${app.requestedRoleName}`
   });
 
-  // Notify faculty of new application
   db.logEmail(
     'faculty.head@college.edu',
     'New Administrator Application Pending Review',
@@ -311,25 +399,45 @@ apiRouter.post('/auth/admin/login', (req: Request, res: Response) => {
     return;
   }
 
-  const normEmail = normalizeEmail(email || '');
-  const admin = db.getAdministrators().find((a) => a.email.toLowerCase() === normEmail);
+  if (
+    typeof email !== 'string' ||
+    typeof password !== 'string' ||
+    !email.trim() ||
+    !password
+  ) {
+    res.status(400).json({ error: 'Email and password are required.' });
+    return;
+  }
+
+  const normEmail = normalizeEmail(email);
+
+  const admin = db.getAdministrators().find(
+    (a) => a.email.toLowerCase() === normEmail
+  );
 
   if (!admin) {
-    // Check if there is an application in pending or rejected status to give informative guidance
-    const app = db.getAdminApplications().find((a) => a.email.toLowerCase() === normEmail);
+    const app = db.getAdminApplications().find(
+      (a) => a.email.toLowerCase() === normEmail
+    );
+
     if (app) {
-      if (app.status === 'PENDING_APPROVAL') {
+      if (
+        app.status === 'PENDING_APPROVAL' ||
+        app.status === 'PENDING_EMAIL_VERIFICATION'
+      ) {
         res.status(403).json({
-          error: 'Your application is currently awaiting faculty verification and approval. Please check back later.'
+          error: 'Your application is still pending. Please complete verification or wait for faculty approval.'
         });
         return;
       }
+
       if (app.status === 'REJECTED') {
         res.status(403).json({
           error: 'Your request for administrator access was not approved by faculty administration.'
         });
         return;
       }
+
       if (app.status === 'BLOCKED') {
         res.status(403).json({
           error: 'Administrator access for this account has been blocked by faculty administration.'
@@ -337,7 +445,10 @@ apiRouter.post('/auth/admin/login', (req: Request, res: Response) => {
         return;
       }
     }
-    res.status(401).json({ error: 'Invalid administrator credentials or unapproved account.' });
+
+    res.status(401).json({
+      error: 'Invalid administrator credentials or unapproved account.'
+    });
     return;
   }
 
@@ -349,6 +460,7 @@ apiRouter.post('/auth/admin/login', (req: Request, res: Response) => {
   }
 
   const isValid = verifyPassword(password, admin.passwordHash, admin.salt);
+
   if (!isValid) {
     db.addAuditLog({
       actorEmail: normEmail,
@@ -358,13 +470,23 @@ apiRouter.post('/auth/admin/login', (req: Request, res: Response) => {
       details: 'Incorrect password entered',
       ip
     });
-    res.status(401).json({ error: 'Invalid administrator credentials.' });
+
+    db.save();
+
+    res.status(401).json({
+      error: 'Invalid administrator credentials.'
+    });
     return;
   }
 
-  const token = createSessionToken(admin.email, 'ADMIN', admin.roleId, admin.permissions);
+  const token = createSessionToken(
+    admin.email,
+    'ADMIN',
+    admin.roleId,
+    admin.permissions
+  );
+
   admin.lastLogin = new Date().toISOString();
-  db.save();
 
   db.addAuditLog({
     actorEmail: admin.email,
@@ -374,6 +496,8 @@ apiRouter.post('/auth/admin/login', (req: Request, res: Response) => {
     details: `Admin ${admin.name} logged in with role ${admin.roleName}`,
     ip
   });
+
+  db.save();
 
   res.json({
     token,
@@ -389,46 +513,60 @@ apiRouter.post('/auth/admin/login', (req: Request, res: Response) => {
   });
 });
 
+// =========================================================
+// 4. CURRENT USER & LOGOUT
+// =========================================================
 apiRouter.get('/auth/me', requireAuth, (req: Request, res: Response) => {
   const auth = req.auth!;
+
   if (auth.role === 'FACULTY') {
-    const f = db.getFaculty().find((x) => x.email.toLowerCase() === auth.email.toLowerCase());
+    const faculty = db.getFaculty().find(
+      (f) => f.email.toLowerCase() === auth.email.toLowerCase()
+    );
+
     res.json({
       role: 'FACULTY',
       email: auth.email,
-      name: f?.name || 'Faculty Member',
-      designation: f?.designation || 'Faculty Director',
+      name: faculty?.name || 'Faculty Member',
+      designation: faculty?.designation || 'Faculty Director',
       permissions: ['all']
     });
-  } else {
-    const a = db.getAdministrators().find((x) => x.email.toLowerCase() === auth.email.toLowerCase());
-    res.json({
-      role: 'ADMIN',
-      id: a?.id,
-      email: auth.email,
-      name: a?.name || 'Administrator',
-      roleId: a?.roleId,
-      roleName: a?.roleName,
-      department: a?.department,
-      status: a?.status,
-      permissions: a?.permissions || auth.permissions
-    });
+    return;
   }
+
+  const admin = db.getAdministrators().find(
+    (a) => a.email.toLowerCase() === auth.email.toLowerCase()
+  );
+
+  res.json({
+    role: 'ADMIN',
+    id: admin?.id,
+    email: auth.email,
+    name: admin?.name || 'Administrator',
+    roleId: admin?.roleId,
+    roleName: admin?.roleName,
+    department: admin?.department,
+    status: admin?.status,
+    permissions: admin?.permissions || auth.permissions
+  });
 });
 
 apiRouter.post('/auth/logout', requireAuth, (req: Request, res: Response) => {
   if (req.auth?.token) {
     invalidateSession(req.auth.token);
   }
-  res.json({ success: true, message: 'Logged out successfully.' });
+
+  res.json({
+    success: true,
+    message: 'Logged out successfully.'
+  });
 });
 
 // =========================================================
-// 4. FACULTY APPLICATION MANAGEMENT & APPROVAL WORKFLOW
+// 5. FACULTY APPLICATION MANAGEMENT & APPROVAL WORKFLOW
 // =========================================================
 apiRouter.get('/faculty/applications', requireFaculty, (req: Request, res: Response) => {
-  const apps = db.getAdminApplications();
-  res.json(apps);
+  res.json(db.getAdminApplications());
 });
 
 apiRouter.post('/faculty/applications/:id/approve', requireFaculty, (req: Request, res: Response) => {
@@ -437,22 +575,31 @@ apiRouter.post('/faculty/applications/:id/approve', requireFaculty, (req: Reques
   const facultyEmail = req.auth!.email;
 
   const app = db.getAdminApplications().find((a) => a.id === id);
+
   if (!app) {
     res.status(404).json({ error: 'Application not found.' });
     return;
   }
 
-  if (app.status === 'BLOCKED') {
-    res.status(400).json({ error: 'Cannot approve a blocked email application. Unblock first.' });
+  if (app.status !== 'PENDING_APPROVAL') {
+    res.status(400).json({
+      error: 'Only email-verified applications awaiting approval can be approved.'
+    });
     return;
   }
 
-  // Find assigned role
   const targetRoleId = assignedRoleId || app.requestedRoleId;
-  const role = db.getRoles().find((r) => r.id === targetRoleId) || db.getRoles()[0];
+  const role = db.getRoles().find((r) => r.id === targetRoleId);
 
-  // Create or activate administrator
-  let admin = db.getAdministrators().find((a) => a.email.toLowerCase() === app.email.toLowerCase());
+  if (!role) {
+    res.status(400).json({ error: 'The selected administrator role does not exist.' });
+    return;
+  }
+
+  let admin = db.getAdministrators().find(
+    (a) => a.email.toLowerCase() === app.email.toLowerCase()
+  );
+
   if (!admin) {
     admin = {
       id: `admin-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
@@ -470,6 +617,7 @@ apiRouter.post('/faculty/applications/:id/approve', requireFaculty, (req: Reques
       approvedAt: new Date().toISOString(),
       createdAt: new Date().toISOString()
     };
+
     db.getAdministrators().push(admin);
   } else {
     admin.status = 'ACTIVE';
@@ -502,7 +650,11 @@ apiRouter.post('/faculty/applications/:id/approve', requireFaculty, (req: Reques
   );
 
   db.save();
-  res.json({ success: true, message: `Application approved. ${app.name} is now an active ${role.name}.` });
+
+  res.json({
+    success: true,
+    message: `Application approved. ${app.name} is now an active ${role.name}.`
+  });
 });
 
 apiRouter.post('/faculty/applications/:id/reject', requireFaculty, (req: Request, res: Response) => {
@@ -511,13 +663,25 @@ apiRouter.post('/faculty/applications/:id/reject', requireFaculty, (req: Request
   const facultyEmail = req.auth!.email;
 
   const app = db.getAdminApplications().find((a) => a.id === id);
+
   if (!app) {
     res.status(404).json({ error: 'Application not found.' });
     return;
   }
 
+  if (app.status !== 'PENDING_APPROVAL') {
+    res.status(400).json({
+      error: 'Only applications awaiting faculty approval can be rejected.'
+    });
+    return;
+  }
+
   app.status = 'REJECTED';
-  app.rejectionReason = (reason || 'Does not meet club administrative criteria').trim();
+  app.rejectionReason =
+    typeof reason === 'string' && reason.trim()
+      ? reason.trim()
+      : 'Does not meet club administrative criteria';
+
   app.reviewedBy = facultyEmail;
   app.reviewedAt = new Date().toISOString();
   app.updatedAt = new Date().toISOString();
@@ -539,7 +703,11 @@ apiRouter.post('/faculty/applications/:id/reject', requireFaculty, (req: Request
   );
 
   db.save();
-  res.json({ success: true, message: 'Application rejected.' });
+
+  res.json({
+    success: true,
+    message: 'Application rejected.'
+  });
 });
 
 apiRouter.post('/faculty/applications/:id/block', requireFaculty, (req: Request, res: Response) => {
@@ -548,15 +716,19 @@ apiRouter.post('/faculty/applications/:id/block', requireFaculty, (req: Request,
   const facultyEmail = req.auth!.email;
 
   const app = db.getAdminApplications().find((a) => a.id === id);
+
   if (!app) {
     res.status(404).json({ error: 'Application not found.' });
     return;
   }
 
   const normEmail = normalizeEmail(app.email);
-  const blockReason = (reason || 'Unauthorized or suspicious administrative application').trim();
 
-  // Add to blocked emails
+  const blockReason =
+    typeof reason === 'string' && reason.trim()
+      ? reason.trim()
+      : 'Unauthorized or suspicious administrative application';
+
   if (!db.getBlockedEmails().some((b) => b.email === normEmail)) {
     db.getBlockedEmails().push({
       id: `block-${Date.now()}`,
@@ -571,12 +743,16 @@ apiRouter.post('/faculty/applications/:id/block', requireFaculty, (req: Request,
   app.rejectionReason = blockReason;
   app.reviewedBy = facultyEmail;
   app.reviewedAt = new Date().toISOString();
+  app.updatedAt = new Date().toISOString();
 
-  // Invalidate any existing admin account or active sessions
-  const adminIndex = db.getAdministrators().findIndex((a) => a.email.toLowerCase() === normEmail);
-  if (adminIndex !== -1) {
-    db.getAdministrators()[adminIndex].status = 'REVOKED';
+  const admin = db.getAdministrators().find(
+    (a) => a.email.toLowerCase() === normEmail
+  );
+
+  if (admin) {
+    admin.status = 'REVOKED';
   }
+
   invalidateAllSessionsForEmail(normEmail);
 
   db.addAuditLog({
@@ -596,11 +772,15 @@ apiRouter.post('/faculty/applications/:id/block', requireFaculty, (req: Request,
   );
 
   db.save();
-  res.json({ success: true, message: `Email address "${normEmail}" has been blocked.` });
+
+  res.json({
+    success: true,
+    message: `Email address "${normEmail}" has been blocked.`
+  });
 });
 
 // =========================================================
-// 5. FACULTY MULTI-ADMIN MANAGEMENT & ROLES
+// 6. FACULTY MULTI-ADMIN MANAGEMENT & ROLES
 // =========================================================
 apiRouter.get('/faculty/administrators', requireFaculty, (req: Request, res: Response) => {
   res.json(db.getAdministrators());
@@ -612,23 +792,25 @@ apiRouter.patch('/faculty/administrators/:id/role', requireFaculty, (req: Reques
   const facultyEmail = req.auth!.email;
 
   const admin = db.getAdministrators().find((a) => a.id === id);
+
   if (!admin) {
     res.status(404).json({ error: 'Administrator not found.' });
     return;
   }
 
   const role = db.getRoles().find((r) => r.id === roleId);
+
   if (!role) {
     res.status(400).json({ error: 'Invalid role selected.' });
     return;
   }
 
   const oldRole = admin.roleName;
+
   admin.roleId = role.id;
   admin.roleName = role.name;
   admin.permissions = role.permissions;
 
-  // Invalidate active session to force token renewal with new permissions
   invalidateAllSessionsForEmail(admin.email);
 
   db.addAuditLog({
@@ -641,15 +823,24 @@ apiRouter.patch('/faculty/administrators/:id/role', requireFaculty, (req: Reques
   });
 
   db.save();
+
   res.json({ success: true, admin });
 });
 
 apiRouter.patch('/faculty/administrators/:id/status', requireFaculty, (req: Request, res: Response) => {
   const { id } = req.params;
-  const { status } = req.body; // 'ACTIVE' | 'SUSPENDED' | 'REVOKED'
+  const { status } = req.body;
   const facultyEmail = req.auth!.email;
 
+  if (!['ACTIVE', 'SUSPENDED', 'REVOKED'].includes(status)) {
+    res.status(400).json({
+      error: 'Status must be ACTIVE, SUSPENDED, or REVOKED.'
+    });
+    return;
+  }
+
   const admin = db.getAdministrators().find((a) => a.id === id);
+
   if (!admin) {
     res.status(404).json({ error: 'Administrator not found.' });
     return;
@@ -672,6 +863,7 @@ apiRouter.patch('/faculty/administrators/:id/status', requireFaculty, (req: Requ
   });
 
   db.save();
+
   res.json({ success: true, admin });
 });
 
@@ -684,12 +876,14 @@ apiRouter.delete('/faculty/blocked-emails/:id', requireFaculty, (req: Request, r
   const facultyEmail = req.auth!.email;
 
   const index = db.getBlockedEmails().findIndex((b) => b.id === id);
+
   if (index === -1) {
     res.status(404).json({ error: 'Blocked entry not found.' });
     return;
   }
 
   const removed = db.getBlockedEmails().splice(index, 1)[0];
+
   db.addAuditLog({
     actorEmail: facultyEmail,
     actorRole: 'FACULTY',
@@ -700,7 +894,11 @@ apiRouter.delete('/faculty/blocked-emails/:id', requireFaculty, (req: Request, r
   });
 
   db.save();
-  res.json({ success: true, message: `Unblocked ${removed.email}` });
+
+  res.json({
+    success: true,
+    message: `Unblocked ${removed.email}`
+  });
 });
 
 apiRouter.get('/faculty/roles', (req: Request, res: Response) => {
@@ -709,20 +907,45 @@ apiRouter.get('/faculty/roles', (req: Request, res: Response) => {
 
 apiRouter.post('/faculty/roles', requireFaculty, (req: Request, res: Response) => {
   const { name, description, permissions } = req.body;
-  if (!name || !permissions || !Array.isArray(permissions)) {
-    res.status(400).json({ error: 'Role name and permissions list are required.' });
+
+  if (
+    typeof name !== 'string' ||
+    !name.trim() ||
+    !Array.isArray(permissions)
+  ) {
+    res.status(400).json({
+      error: 'Role name and permissions list are required.'
+    });
+    return;
+  }
+
+  const normalizedName = name.trim();
+
+  if (
+    db.getRoles().some(
+      (role) => role.name.toLowerCase() === normalizedName.toLowerCase()
+    )
+  ) {
+    res.status(409).json({
+      error: 'A role with this name already exists.'
+    });
     return;
   }
 
   const newRole = {
     id: `role-${Date.now()}`,
-    name: name.trim(),
-    description: (description || '').trim(),
-    permissions,
+    name: normalizedName,
+    description: typeof description === 'string' ? description.trim() : '',
+    permissions: [
+      ...new Set(
+        permissions.filter((p: unknown) => typeof p === 'string')
+      )
+    ],
     isSystem: false
   };
 
   db.getRoles().push(newRole);
+
   db.addAuditLog({
     actorEmail: req.auth!.email,
     actorRole: 'FACULTY',
@@ -733,16 +956,20 @@ apiRouter.post('/faculty/roles', requireFaculty, (req: Request, res: Response) =
   });
 
   db.save();
-  res.json(newRole);
+
+  res.status(201).json(newRole);
 });
 
 // =========================================================
-// 6. JLPT REGISTRATION CONTROL & STUDENT MANAGEMENT
+// 7. JLPT REGISTRATION CONTROL & STUDENT MANAGEMENT
 // =========================================================
 apiRouter.get('/jlpt/settings', (req: Request, res: Response) => {
   const settings = db.getJlptSettings();
   const studentCount = db.getStudents().length;
-  const isRegistrationOpen = Boolean(settings.isEnabled && settings.status === 'OPEN');
+  const isRegistrationOpen = Boolean(
+    settings.isEnabled && settings.status === 'OPEN'
+  );
+
   res.json({
     ...settings,
     isRegistrationOpen,
@@ -752,7 +979,18 @@ apiRouter.get('/jlpt/settings', (req: Request, res: Response) => {
 });
 
 apiRouter.post('/jlpt/settings', requireFaculty, (req: Request, res: Response) => {
-  let { isEnabled, status, isRegistrationOpen, startDate, endDate, maxCapacity, allowWaitlistWhenFull, allowedLevels, instructions } = req.body;
+  let {
+    isEnabled,
+    status,
+    isRegistrationOpen,
+    startDate,
+    endDate,
+    maxCapacity,
+    allowWaitlistWhenFull,
+    allowedLevels,
+    instructions
+  } = req.body;
+
   const facultyEmail = req.auth!.email;
 
   if (isRegistrationOpen !== undefined) {
@@ -766,18 +1004,29 @@ apiRouter.post('/jlpt/settings', requireFaculty, (req: Request, res: Response) =
       status: status || undefined,
       startDate: startDate || undefined,
       endDate: endDate || undefined,
-      maxCapacity: maxCapacity ? Number(maxCapacity) : undefined,
-      allowWaitlistWhenFull: allowWaitlistWhenFull !== undefined ? Boolean(allowWaitlistWhenFull) : undefined,
-      allowedLevels: allowedLevels || undefined,
-      instructions: instructions || undefined
+      maxCapacity: maxCapacity !== undefined
+        ? Number(maxCapacity)
+        : undefined,
+      allowWaitlistWhenFull: allowWaitlistWhenFull !== undefined
+        ? Boolean(allowWaitlistWhenFull)
+        : undefined,
+      allowedLevels: Array.isArray(allowedLevels)
+        ? allowedLevels
+        : undefined,
+      instructions: instructions !== undefined
+        ? String(instructions)
+        : undefined
     },
     facultyEmail
   );
 
   const studentCount = db.getStudents().length;
+
   res.json({
     ...updated,
-    isRegistrationOpen: Boolean(updated.isEnabled && updated.status === 'OPEN'),
+    isRegistrationOpen: Boolean(
+      updated.isEnabled && updated.status === 'OPEN'
+    ),
     registeredCount: studentCount,
     capacityRemaining: Math.max(0, updated.maxCapacity - studentCount)
   });
@@ -788,54 +1037,97 @@ apiRouter.post('/jlpt/register', (req: Request, res: Response) => {
   const ip = req.ip || 'unknown';
 
   if (!checkRateLimit(`jlpt_reg_${ip}`, 10, 60000)) {
-    res.status(429).json({ error: 'Too many registration requests. Please wait a moment.' });
+    res.status(429).json({
+      error: 'Too many registration requests. Please wait a moment.'
+    });
     return;
   }
 
-  // Normalize request payload fields
-  const collegeEmail = req.body.collegeEmail?.trim().toLowerCase() || '';
-  const personalEmail = req.body.personalEmail?.trim() || (collegeEmail ? collegeEmail.replace(/@.+/, '@gmail.com') : '');
-  const mobileNumber = req.body.mobileNumber?.trim() || req.body.phone?.trim() || '+919876543210';
-  const section = req.body.section?.trim() || 'A';
-  const currentYear = req.body.currentYear?.trim() || req.body.academicYear?.trim() || '2nd Year';
-  const graduationYear = req.body.graduationYear?.trim() || '2027';
-  const consent = req.body.consent !== undefined ? Boolean(req.body.consent) : (req.body.consentDeclaration !== undefined ? Boolean(req.body.consentDeclaration) : true);
+  const collegeEmail =
+    typeof req.body.collegeEmail === 'string'
+      ? req.body.collegeEmail.trim().toLowerCase()
+      : '';
 
-  let prevExp = req.body.previousExperience || 'First time';
-  if (!['First time', 'Previously attempted', 'Previously passed'].includes(prevExp)) {
-    prevExp = 'First time';
-  }
+  const personalEmail =
+    typeof req.body.personalEmail === 'string'
+      ? req.body.personalEmail.trim().toLowerCase()
+      : '';
+
+  const mobileNumber =
+    typeof req.body.mobileNumber === 'string'
+      ? req.body.mobileNumber.trim()
+      : '';
+
+  const section =
+    typeof req.body.section === 'string'
+      ? req.body.section.trim()
+      : '';
+
+  const currentYear =
+    typeof req.body.currentYear === 'string'
+      ? req.body.currentYear.trim()
+      : '';
+
+  const graduationYear =
+    typeof req.body.graduationYear === 'string'
+      ? req.body.graduationYear.trim()
+      : '';
 
   const normalizedPayload = {
     ...req.body,
-    fullName: req.body.fullName?.trim() || '',
+    fullName:
+      typeof req.body.fullName === 'string'
+        ? req.body.fullName.trim()
+        : '',
     collegeEmail,
     personalEmail,
     mobileNumber,
-    usn: req.body.usn?.trim().toUpperCase() || '',
-    branch: req.body.branch?.trim() || 'Computer Science',
+    usn:
+      typeof req.body.usn === 'string'
+        ? req.body.usn.trim().toUpperCase()
+        : '',
+    branch:
+      typeof req.body.branch === 'string'
+        ? req.body.branch.trim()
+        : '',
     section,
     currentYear,
     graduationYear,
-    jlptLevel: req.body.jlptLevel || 'N5',
-    previousExperience: prevExp,
-    additionalInfo: req.body.additionalInfo || req.body.motivationReason || '',
-    consent
+    jlptLevel: req.body.jlptLevel,
+    previousExperience: req.body.previousExperience,
+    additionalInfo:
+      typeof req.body.additionalInfo === 'string'
+        ? req.body.additionalInfo.trim()
+        : typeof req.body.motivationReason === 'string'
+          ? req.body.motivationReason.trim()
+          : '',
+    consent:
+      req.body.consent !== undefined
+        ? req.body.consent
+        : req.body.consentDeclaration
   };
 
-  const validation = validateStudentJlptForm(normalizedPayload, db.getJlptSettings().allowedLevels);
+  const validation = validateStudentJlptForm(
+    normalizedPayload,
+    db.getJlptSettings().allowedLevels
+  );
+
   if (!validation.isValid) {
-    res.status(400).json({ error: 'Form validation failed.', details: validation.errors });
+    res.status(400).json({
+      error: 'Form validation failed.',
+      details: validation.errors
+    });
     return;
   }
 
   const result = db.registerStudent(normalizedPayload);
+
   if (!result.success) {
     res.status(400).json({ error: result.error });
     return;
   }
 
-  res.json({
+  res.status(201).json({
     success: true,
     referenceId: result.referenceId,
     student: result.student,
@@ -846,8 +1138,16 @@ apiRouter.post('/jlpt/register', (req: Request, res: Response) => {
 // Student status lookup
 apiRouter.post('/jlpt/status-check', (req: Request, res: Response) => {
   const { usn, collegeEmail } = req.body;
-  if (!usn || !collegeEmail) {
-    res.status(400).json({ error: 'Both USN and registered College Email are required to check status.' });
+
+  if (
+    typeof usn !== 'string' ||
+    typeof collegeEmail !== 'string' ||
+    !usn.trim() ||
+    !collegeEmail.trim()
+  ) {
+    res.status(400).json({
+      error: 'Both USN and registered College Email are required to check status.'
+    });
     return;
   }
 
@@ -855,11 +1155,15 @@ apiRouter.post('/jlpt/status-check', (req: Request, res: Response) => {
   const normEmail = normalizeEmail(collegeEmail);
 
   const student = db.getStudents().find(
-    (s) => s.usn.trim().toUpperCase() === normUsn && s.collegeEmail.trim().toLowerCase() === normEmail
+    (s) =>
+      s.usn.trim().toUpperCase() === normUsn &&
+      s.collegeEmail.trim().toLowerCase() === normEmail
   );
 
   if (!student) {
-    res.status(404).json({ error: 'No matching student registration record was found.' });
+    res.status(404).json({
+      error: 'No matching student registration record was found.'
+    });
     return;
   }
 
@@ -883,6 +1187,7 @@ apiRouter.get('/jlpt/students', requirePermission('student_view'), (req: Request
 
   if (search && typeof search === 'string') {
     const q = search.toLowerCase();
+
     list = list.filter(
       (s) =>
         s.fullName.toLowerCase().includes(q) ||
@@ -916,18 +1221,48 @@ apiRouter.patch('/jlpt/students/:id', requirePermission('student_manage'), (req:
   const { applicationStatus, internalNotes } = req.body;
   const actor = req.auth!;
 
-  const student = db.getStudents().find((s) => s.id === id || s.referenceId === id);
+  const student = db.getStudents().find(
+    (s) => s.id === id || s.referenceId === id
+  );
+
   if (!student) {
     res.status(404).json({ error: 'Student record not found.' });
     return;
   }
 
-  if (applicationStatus) {
+  const allowedStatuses = [
+    'REGISTERED',
+    'UNDER_REVIEW',
+    'APPROVED',
+    'REJECTED',
+    'WAITLISTED',
+    'CANCELLED'
+  ];
+
+  if (
+    applicationStatus !== undefined &&
+    !allowedStatuses.includes(applicationStatus)
+  ) {
+    res.status(400).json({ error: 'Invalid student application status.' });
+    return;
+  }
+
+  if (
+    internalNotes !== undefined &&
+    typeof internalNotes !== 'string'
+  ) {
+    res.status(400).json({ error: 'Internal notes must be text.' });
+    return;
+  }
+
+  if (applicationStatus !== undefined) {
     student.applicationStatus = applicationStatus;
   }
+
   if (internalNotes !== undefined) {
-    student.internalNotes = internalNotes;
+    student.internalNotes = internalNotes.trim();
   }
+
   student.updatedAt = new Date().toISOString();
 
   db.addAuditLog({
@@ -940,12 +1275,14 @@ apiRouter.patch('/jlpt/students/:id', requirePermission('student_manage'), (req:
   });
 
   db.save();
+
   res.json({ success: true, student });
 });
 
 // CSV Export
 apiRouter.get('/jlpt/export-csv', requirePermission('student_view'), (req: Request, res: Response) => {
   const students = db.getStudents();
+
   const headers = [
     'Reference ID',
     'Full Name',
@@ -963,24 +1300,35 @@ apiRouter.get('/jlpt/export-csv', requirePermission('student_view'), (req: Reque
     'Registered At'
   ];
 
-  const rows = students.map((s) => [
-    `"${s.referenceId}"`,
-    `"${s.fullName.replace(/"/g, '""')}"`,
-    `"${s.usn}"`,
-    `"${s.collegeEmail}"`,
-    `"${s.personalEmail}"`,
-    `"${s.mobileNumber}"`,
-    `"${s.branch}"`,
-    `"${s.section}"`,
-    `"${s.currentYear}"`,
-    `"${s.graduationYear}"`,
-    `"${s.jlptLevel}"`,
-    `"${s.previousExperience}"`,
-    `"${s.applicationStatus}"`,
-    `"${s.registeredAt}"`
-  ]);
+  const escapeCsv = (value: unknown): string => {
+    const text = value === null || value === undefined
+      ? ''
+      : String(value);
 
-  const csv = [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');
+    return `"${text.replace(/"/g, '""')}"`;
+  };
+
+  const rows = students.map((s) => [
+    s.referenceId,
+    s.fullName,
+    s.usn,
+    s.collegeEmail,
+    s.personalEmail,
+    s.mobileNumber,
+    s.branch,
+    s.section,
+    s.currentYear,
+    s.graduationYear,
+    s.jlptLevel,
+    s.previousExperience,
+    s.applicationStatus,
+    s.registeredAt
+  ].map(escapeCsv));
+
+  const csv = [
+    headers.map(escapeCsv).join(','),
+    ...rows.map((row) => row.join(','))
+  ].join('\r\n');
 
   db.addAuditLog({
     actorEmail: req.auth!.email,
@@ -990,267 +1338,479 @@ apiRouter.get('/jlpt/export-csv', requirePermission('student_view'), (req: Reque
     details: `Exported ${students.length} student records to CSV`
   });
 
-  res.setHeader('Content-Type', 'text/csv');
-  res.setHeader('Content-Disposition', `attachment; filename="jlpt_registrations_${Date.now()}.csv"`);
-  res.send(csv);
+  db.save();
+
+  res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+  res.setHeader(
+    'Content-Disposition',
+    `attachment; filename="jlpt_registrations_${Date.now()}.csv"`
+  );
+
+  res.send(`\uFEFF${csv}`);
 });
 
-// Bulk simulation testing helper for faculty (up to 1,000 students as requested in prompt)
+// Bulk simulation testing helper for faculty
 apiRouter.post('/jlpt/simulate-bulk', requireFaculty, (req: Request, res: Response) => {
-  const { targetCount = 200 } = req.body;
-  const countToCreate = Math.min(1000, Number(targetCount));
-  const currentCount = db.getStudents().length;
-  const branches = ['Computer Science', 'Information Science', 'Electronics & Comm', 'Mechanical', 'AI & Data Science', 'Biotechnology'];
-  const years = ['1st Year (Freshman)', '2nd Year (Sophomore)', '3rd Year (Junior)', '4th Year (Senior)'];
-  const levels = ['N5', 'N4', 'N3', 'N2', 'N1'];
+  const targetCount = Number(req.body?.targetCount ?? 200);
 
-  for (let i = 1; i <= countToCreate; i++) {
-    const seq = currentCount + i;
-    const refId = `JLPT-2026-${String(seq).padStart(4, '0')}`;
-    const branch = branches[i % branches.length];
-    const year = years[i % years.length];
-    const level = levels[i % levels.length];
-
-    db.getStudents().push({
-      id: `std-sim-${Date.now()}-${i}`,
-      referenceId: refId,
-      fullName: `Simulated Student ${seq}`,
-      collegeEmail: `sim.student${seq}@college.edu`,
-      personalEmail: `sim.student${seq}@gmail.com`,
-      mobileNumber: `+9198${String(seq).padStart(8, '0')}`,
-      usn: `1MS23CS${String(seq).padStart(3, '0')}`,
-      branch,
-      section: (i % 2 === 0 ? 'A' : 'B'),
-      currentYear: year,
-      graduationYear: '2027',
-      jlptLevel: level,
-      previousExperience: i % 3 === 0 ? 'Previously attempted' : 'First time',
-      consent: true,
-      verificationStatus: 'VERIFIED',
-      applicationStatus: i > 950 ? 'WAITLISTED' : 'REGISTERED',
-      registeredAt: new Date(Date.now() - (1000 - i) * 60000).toISOString(),
-      updatedAt: new Date().toISOString()
+  if (
+    !Number.isInteger(targetCount) ||
+    targetCount < 1 ||
+    targetCount > 1000
+  ) {
+    res.status(400).json({
+      error: 'targetCount must be an integer between 1 and 1000.'
     });
+    return;
+  }
+
+  const branches = [
+    'Computer Science',
+    'Information Science',
+    'Electronics and Communication',
+    'Mechanical',
+    'Civil'
+  ];
+
+  const levels = db.getJlptSettings().allowedLevels;
+
+  const experienceOptions = [
+    'First time',
+    'Previously attempted',
+    'Previously passed'
+  ];
+
+  const created: StudentRegistration[] = [];
+
+  for (let i = 0; i < targetCount; i += 1) {
+    const suffix = `${Date.now()}${i}`;
+
+    const studentData = {
+      fullName: `Test Student ${i + 1}`,
+      collegeEmail: `teststudent${suffix}@college.edu`,
+      personalEmail: `teststudent${suffix}@example.com`,
+      mobileNumber: `90000${String(i).padStart(5, '0').slice(-5)}`,
+      usn: `TEST${String(i).padStart(6, '0')}`,
+      branch: branches[i % branches.length],
+      section: 'A',
+      currentYear: '2nd Year',
+      graduationYear: '2028',
+      jlptLevel: levels[i % Math.max(levels.length, 1)] || 'N5',
+      previousExperience: experienceOptions[i % experienceOptions.length],
+      additionalInfo: 'Generated test record',
+      consent: true
+    };
+
+    const result = db.registerStudent(studentData);
+
+    if (result.success && result.student) {
+      created.push(result.student);
+    }
   }
 
   db.addAuditLog({
     actorEmail: req.auth!.email,
     actorRole: 'FACULTY',
     action: 'SIMULATE_BULK_STUDENTS',
-    targetType: 'STRESS_TEST',
-    details: `Generated ${countToCreate} simulated student records for testing (total: ${db.getStudents().length})`
+    targetType: 'STUDENT_DATA',
+    details: `Generated ${created.length} test student records`
   });
 
   db.save();
+
   res.json({
     success: true,
-    added: countToCreate,
-    totalStudents: db.getStudents().length,
-    message: `Generated ${countToCreate} simulated students. Total registered is now ${db.getStudents().length}.`
+    requested: targetCount,
+    created: created.length,
+    students: created
   });
 });
 
 // =========================================================
-// 7. EVENTS & DIGITAL QR CHECK-IN
+// 8. EVENTS & QR ATTENDANCE MANAGEMENT
 // =========================================================
 apiRouter.get('/events', (req: Request, res: Response) => {
   res.json(db.getEvents());
 });
 
 apiRouter.post('/events', requirePermission('events_manage'), (req: Request, res: Response) => {
-  const { title, japaneseTitle, category, date, time, venue, image, description, highlights, capacity } = req.body;
-  if (!title || !date || !venue) {
-    res.status(400).json({ error: 'Title, date, and venue are required.' });
+  const {
+    title,
+    description,
+    date,
+    time,
+    venue,
+    capacity,
+    image,
+    category
+  } = req.body;
+
+  if (
+    typeof title !== 'string' ||
+    !title.trim() ||
+    typeof date !== 'string' ||
+    !date.trim() ||
+    typeof time !== 'string' ||
+    !time.trim() ||
+    typeof venue !== 'string' ||
+    !venue.trim()
+  ) {
+    res.status(400).json({
+      error: 'Event title, date, time, and venue are required.'
+    });
     return;
   }
 
-  const newEvent = {
-    id: `ev-${Date.now()}`,
-    title,
-    japaneseTitle: japaneseTitle || '特別行事',
-    category: category || 'Cultural',
-    date,
-    time: time || '5:00 PM',
-    venue,
-    image: image || 'https://images.unsplash.com/photo-1493976040374-85c8e12f0c0e?auto=format&fit=crop&w=1200&q=80',
-    description: description || '',
-    highlights: Array.isArray(highlights) ? highlights : [],
-    capacity: Number(capacity) || 100,
-    registeredCount: 0
+  const parsedCapacity = Number(capacity);
+
+  if (
+    capacity !== undefined &&
+    (!Number.isInteger(parsedCapacity) || parsedCapacity < 1)
+  ) {
+    res.status(400).json({
+      error: 'Event capacity must be a positive whole number.'
+    });
+    return;
+  }
+
+  const event = {
+    id: `event-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+    title: title.trim(),
+    description: typeof description === 'string' ? description.trim() : '',
+    date: date.trim(),
+    time: time.trim(),
+    venue: venue.trim(),
+    capacity: capacity === undefined ? 0 : parsedCapacity,
+    registeredCount: 0,
+    image: typeof image === 'string' ? image : '',
+    category: typeof category === 'string' ? category : 'General',
+    createdAt: new Date().toISOString(),
+    createdBy: req.auth!.email
   };
 
-  db.getEvents().unshift(newEvent);
+  db.getEvents().push(event);
+
   db.addAuditLog({
     actorEmail: req.auth!.email,
     actorRole: req.auth!.role,
     action: 'CREATE_EVENT',
     targetType: 'EVENT',
-    targetId: newEvent.id,
-    details: `Created event "${newEvent.title}"`
+    targetId: event.id,
+    details: `Created event "${event.title}"`
   });
 
   db.save();
-  res.json(newEvent);
+
+  res.status(201).json(event);
 });
 
+// Public event registration
 apiRouter.post('/events/:id/register', async (req: Request, res: Response) => {
-  const { id } = req.params;
+  const eventId = req.params.id;
+
   const { fullName, collegeEmail, usn } = req.body;
 
-  const event = db.getEvents().find((e) => e.id === id);
+  if (
+    typeof fullName !== 'string' ||
+    typeof collegeEmail !== 'string' ||
+    typeof usn !== 'string' ||
+    !fullName.trim() ||
+    !collegeEmail.trim() ||
+    !usn.trim()
+  ) {
+    res.status(400).json({
+      error: 'Full name, college email, and USN are required.'
+    });
+    return;
+  }
+
+  const event = db.getEvents().find((e) => e.id === eventId);
+
   if (!event) {
     res.status(404).json({ error: 'Event not found.' });
     return;
   }
 
-  if (event.registeredCount >= event.capacity) {
-    res.status(400).json({ error: 'This event has reached full capacity.' });
-    return;
-  }
+  const attendees = db.getEventAttendeesByEvent(eventId);
 
-  const ticketCode = `PASS-${Math.floor(100000 + Math.random() * 900000)}`;
-  const qrPayload = JSON.stringify({
-    ticket: ticketCode,
-    eventId: event.id,
-    usn: usn || 'N/A',
-    email: collegeEmail
-  });
-
-  let qrDataUrl = '';
-  try {
-    qrDataUrl = await QRCode.toDataURL(qrPayload, { margin: 1, width: 220 });
-  } catch (err) {
-    console.error('Failed generating QR code:', err);
-  }
-
-  const attendee = {
-    id: `att-${Date.now()}`,
-    eventId: event.id,
-    eventTitle: event.title,
-    fullName: fullName || 'Student Guest',
-    collegeEmail: collegeEmail || 'student@college.edu',
-    usn: usn || '1MS23CS000',
-    ticketCode,
-    qrData: qrDataUrl,
-    checkedIn: false,
-    registeredAt: new Date().toISOString()
-  };
-
-  db.getEventAttendees().push(attendee);
-  event.registeredCount++;
-
-  db.logEmail(
-    collegeEmail,
-    `Your Event Entry Pass – ${event.title}`,
-    'EVENT_PASS',
-    `Dear ${fullName},\n\nYour seat for "${event.title}" has been reserved.\nTicket Code: ${ticketCode}\nVenue: ${event.venue}\nTime: ${event.date} at ${event.time}.\n\nShow your digital QR pass at check-in.`
-  );
-
-  db.save();
-  res.json({ success: true, attendee, ticketCode, qrDataUrl });
-});
-
-apiRouter.post('/events/check-in', requirePermission('attendance_manage'), (req: Request, res: Response) => {
-  const { ticketCode, usn } = req.body;
-  const actor = req.auth!;
-
-  if (!ticketCode && !usn) {
-    res.status(400).json({ error: 'Provide ticket code or USN for attendance check-in.' });
-    return;
-  }
-
-  const attendee = db.getEventAttendees().find(
-    (a) => (ticketCode && a.ticketCode === ticketCode.trim()) || (usn && a.usn.toUpperCase() === usn.trim().toUpperCase())
-  );
-
-  if (!attendee) {
-    res.status(404).json({ error: 'No matching reservation found for this pass or student.' });
-    return;
-  }
-
-  if (attendee.checkedIn) {
-    res.status(400).json({
-      error: `Already checked in at ${new Date(attendee.checkedInAt!).toLocaleTimeString()} by ${attendee.checkedInBy || 'Staff'}. Duplicate entry rejected.`
+  if (
+    Number(event.capacity) > 0 &&
+    attendees.length >= Number(event.capacity)
+  ) {
+    res.status(409).json({
+      error: 'This event has reached its registration capacity.'
     });
     return;
   }
 
-  attendee.checkedIn = true;
-  attendee.checkedInAt = new Date().toISOString();
-  attendee.checkedInBy = actor.email;
+  const normalizedEmail = normalizeEmail(collegeEmail);
+  const normalizedUsn = usn.trim().toUpperCase();
+
+  const duplicate = attendees.some(
+    (attendee) =>
+      attendee.collegeEmail.toLowerCase() === normalizedEmail ||
+      attendee.usn.toUpperCase() === normalizedUsn
+  );
+
+  if (duplicate) {
+    res.status(409).json({
+      error: 'This email address or USN is already registered for this event.'
+    });
+    return;
+  }
+
+  const ticketCode = String(
+    Math.floor(100000 + Math.random() * 900000)
+  );
+
+  const ticketExists = db.getEventAttendeesByEvent(eventId).some(
+    (attendee) => attendee.ticketCode === ticketCode
+  );
+
+  if (ticketExists) {
+    res.status(500).json({
+      error: 'Unable to generate a unique ticket. Please try again.'
+    });
+    return;
+  }
+
+  try {
+    const qrCode = await QRCode.toDataURL(ticketCode);
+
+    const registrationResult = db.registerEventAttendee({
+      eventId,
+      fullName: fullName.trim(),
+      collegeEmail: normalizedEmail,
+      usn: normalizedUsn,
+      ticketCode,
+      qrCode
+    });
+
+    if (!registrationResult.success) {
+      res.status(409).json({
+        error: registrationResult.error || 'Unable to register for this event.'
+      });
+      return;
+    }
+
+    db.logEmail(
+      normalizedEmail,
+      `Event Registration Confirmation: ${event.title}`,
+      'EVENT_REGISTRATION',
+      `Hello ${fullName.trim()},\n\nYour registration for "${event.title}" is confirmed.\n\nTicket Code: ${ticketCode}\nEvent Date: ${event.date}\nEvent Time: ${event.time}\nVenue: ${event.venue}\n\nPlease present your ticket QR code at the event entrance.\n\nRegards,\nKomorebi Japanese Club`
+    );
+
+    db.addAuditLog({
+      actorEmail: normalizedEmail,
+      actorRole: 'STUDENT',
+      action: 'EVENT_REGISTRATION',
+      targetType: 'EVENT',
+      targetId: eventId,
+      details: `Registered ${fullName.trim()} (${normalizedUsn}) for "${event.title}"`
+    });
+
+    db.save();
+
+    res.status(201).json({
+      success: true,
+      attendee: registrationResult.attendee,
+      ticketCode,
+      qrCode,
+      message: 'Event registration completed successfully.'
+    });
+  } catch (error) {
+    console.error('Event registration error:', error);
+
+    res.status(500).json({
+      error: 'An error occurred while registering for this event.'
+    });
+  }
+});
+
+// Event attendance check-in
+apiRouter.post('/events/check-in', requirePermission('attendance_manage'), (req: Request, res: Response) => {
+  const { ticketCode, usn, eventId } = req.body;
+
+  if (
+    typeof ticketCode !== 'string' &&
+    !(typeof usn === 'string' && typeof eventId === 'string')
+  ) {
+    res.status(400).json({
+      error: 'Provide a ticket code or both event ID and USN.'
+    });
+    return;
+  }
+
+  let attendee;
+
+  if (typeof ticketCode === 'string' && ticketCode.trim()) {
+    attendee = db.getEventAttendeeByTicket(ticketCode.trim());
+  } else {
+    const normalizedUsn = usn.trim().toUpperCase();
+
+    attendee = db.getEventAttendeesByEvent(eventId).find(
+      (item) => item.usn.toUpperCase() === normalizedUsn
+    );
+  }
+
+  if (!attendee) {
+    res.status(404).json({
+      error: 'No matching event registration was found.'
+    });
+    return;
+  }
+
+  if (attendee.checkedIn) {
+    res.status(409).json({
+      error: 'This attendee has already been checked in.',
+      attendee
+    });
+    return;
+  }
+
+  const checkedIn = db.checkInEventAttendee(
+    attendee.ticketCode,
+    req.auth!.email
+  );
+
+  if (!checkedIn) {
+    res.status(409).json({
+      error: 'Unable to check in attendee. The ticket may already be used.'
+    });
+    return;
+  }
 
   db.addAuditLog({
-    actorEmail: actor.email,
-    actorRole: actor.role,
-    action: 'EVENT_CHECK_IN',
-    targetType: 'ATTENDEE',
+    actorEmail: req.auth!.email,
+    actorRole: req.auth!.role,
+    action: 'EVENT_ATTENDEE_CHECK_IN',
+    targetType: 'EVENT_ATTENDEE',
     targetId: attendee.ticketCode,
-    details: `Checked in ${attendee.fullName} (${attendee.usn}) for ${attendee.eventTitle}`
+    details: `Checked in ${attendee.fullName} (${attendee.usn})`
   });
 
   db.save();
+
   res.json({
     success: true,
-    message: `Check-in successful! Welcome ${attendee.fullName}.`,
-    attendee
+    attendee: checkedIn,
+    message: 'Attendee checked in successfully.'
   });
 });
 
+// Event attendees list
 apiRouter.get('/events/:id/attendees', requirePermission('attendance_manage'), (req: Request, res: Response) => {
-  const { id } = req.params;
-  const list = db.getEventAttendees().filter((a) => a.eventId === id);
-  res.json(list);
+  const event = db.getEvents().find((e) => e.id === req.params.id);
+
+  if (!event) {
+    res.status(404).json({ error: 'Event not found.' });
+    return;
+  }
+
+  res.json(db.getEventAttendeesByEvent(req.params.id));
 });
 
 // =========================================================
-// 8. ANIME & MANGA DISCOVERY
+// 9. ANIME & MANGA DISCOVERY
 // =========================================================
 apiRouter.get('/anime-manga', (req: Request, res: Response) => {
   res.json(db.getAnimeManga());
 });
 
 apiRouter.post('/anime-manga', requireAuth, (req: Request, res: Response) => {
-  const { title, japaneseTitle, type, genre, episodesOrChapters, synopsis, score } = req.body;
-  if (!title || !type) {
-    res.status(400).json({ error: 'Title and type are required.' });
+  const {
+    title,
+    type,
+    genre,
+    description,
+    image,
+    rating
+  } = req.body;
+
+  if (
+    typeof title !== 'string' ||
+    !title.trim() ||
+    typeof type !== 'string' ||
+    !type.trim()
+  ) {
+    res.status(400).json({
+      error: 'Anime or manga title and type are required.'
+    });
     return;
   }
 
-  const newItem = {
-    id: `am-${Date.now()}`,
-    title,
-    japaneseTitle: japaneseTitle || '',
-    type: type as 'Anime' | 'Manga',
-    genre: genre || 'General',
-    score: Number(score) || 8.5,
-    episodesOrChapters: episodesOrChapters || 'Ongoing',
-    synopsis: synopsis || '',
-    recommendedBy: req.auth!.email,
-    isApproved: req.auth!.role === 'FACULTY' || req.auth!.permissions.includes('anime_manage'),
+  const item = {
+    id: `anime-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+    title: title.trim(),
+    type: type.trim(),
+    genre: typeof genre === 'string' ? genre.trim() : '',
+    description: typeof description === 'string' ? description.trim() : '',
+    image: typeof image === 'string' ? image.trim() : '',
+    rating: rating !== undefined ? Number(rating) : 0,
+    isApproved: false,
+    submittedBy: req.auth!.email,
     createdAt: new Date().toISOString()
   };
 
-  db.getAnimeManga().unshift(newItem);
+  db.getAnimeManga().push(item);
+
+  db.addAuditLog({
+    actorEmail: req.auth!.email,
+    actorRole: req.auth!.role,
+    action: 'SUBMIT_ANIME_MANGA',
+    targetType: 'ANIME_MANGA',
+    targetId: item.id,
+    details: `Submitted "${item.title}" for review`
+  });
+
   db.save();
-  res.json(newItem);
+
+  res.status(201).json({
+    success: true,
+    item,
+    message: 'Your suggestion has been submitted for review.'
+  });
 });
 
 apiRouter.patch('/anime-manga/:id/moderate', requirePermission('anime_manage'), (req: Request, res: Response) => {
   const { id } = req.params;
   const { isApproved } = req.body;
-  const item = db.getAnimeManga().find((i) => i.id === id);
+
+  if (typeof isApproved !== 'boolean') {
+    res.status(400).json({
+      error: 'isApproved must be a boolean value.'
+    });
+    return;
+  }
+
+  const item = db.getAnimeManga().find((a) => a.id === id);
+
   if (!item) {
     res.status(404).json({ error: 'Item not found.' });
     return;
   }
 
-  item.isApproved = Boolean(isApproved);
+  item.isApproved = isApproved;
+
+  db.addAuditLog({
+    actorEmail: req.auth!.email,
+    actorRole: req.auth!.role,
+    action: isApproved ? 'APPROVE_ANIME_MANGA' : 'REJECT_ANIME_MANGA',
+    targetType: 'ANIME_MANGA',
+    targetId: item.id,
+    details: `${isApproved ? 'Approved' : 'Rejected'} "${item.title}"`
+  });
+
   db.save();
-  res.json({ success: true, item });
+
+  res.json({
+    success: true,
+    item
+  });
 });
 
 // =========================================================
-// 9. AUDIT LOGS & TRANSACTIONAL EMAIL LOGS
+// 10. AUDIT LOGS & TRANSACTIONAL EMAIL LOGS
 // =========================================================
 apiRouter.get('/audit-logs', requireFaculty, (req: Request, res: Response) => {
   res.json(db.getAuditLogs());

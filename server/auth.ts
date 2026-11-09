@@ -2,6 +2,10 @@ import { Request, Response, NextFunction } from 'express';
 import crypto from 'crypto';
 import { db } from './db';
 
+// ============================================================
+// AUTHENTICATION TYPES
+// ============================================================
+
 export interface AuthContext {
   token: string;
   email: string;
@@ -18,31 +22,87 @@ declare global {
   }
 }
 
-// In-memory rate limiting map: ip/email -> { attempts: number, lastAttempt: number }
-const rateLimitMap = new Map<string, { attempts: number; firstAttempt: number }>();
+interface SessionRecord {
+  email: string;
+  role: string;
+  roleId?: string;
+  permissions: string[];
+  expiresAt: number;
+}
 
-export function checkRateLimit(key: string, maxAttempts = 10, windowMs = 60000): boolean {
+interface RateLimitRecord {
+  count: number;
+  resetAt: number;
+}
+
+// ============================================================
+// CONFIGURATION
+// ============================================================
+
+const SESSION_DURATION = 24 * 60 * 60 * 1000;
+
+const rateLimitStore = new Map<string, RateLimitRecord>();
+
+// ============================================================
+// RATE LIMITING
+// ============================================================
+
+/**
+ * Checks whether a request is within the configured rate limit.
+ *
+ * @param key Unique identifier for the rate-limit bucket.
+ * @param maxAttempts Maximum permitted attempts.
+ * @param windowMs Time window in milliseconds.
+ */
+export function checkRateLimit(
+  key: string,
+  maxAttempts: number = 10,
+  windowMs: number = 60000
+): boolean {
   const now = Date.now();
-  const entry = rateLimitMap.get(key);
+  const existing = rateLimitStore.get(key);
 
-  if (!entry) {
-    rateLimitMap.set(key, { attempts: 1, firstAttempt: now });
+  if (!existing || now >= existing.resetAt) {
+    rateLimitStore.set(key, {
+      count: 1,
+      resetAt: now + windowMs
+    });
+
     return true;
   }
 
-  if (now - entry.firstAttempt > windowMs) {
-    rateLimitMap.set(key, { attempts: 1, firstAttempt: now });
-    return true;
-  }
-
-  if (entry.attempts >= maxAttempts) {
+  if (existing.count >= maxAttempts) {
     return false;
   }
 
-  entry.attempts++;
+  existing.count += 1;
+
   return true;
 }
 
+/**
+ * Removes expired rate-limit records.
+ * This prevents the in-memory store from growing indefinitely.
+ */
+function cleanupRateLimits(): void {
+  const now = Date.now();
+
+  for (const [key, record] of rateLimitStore.entries()) {
+    if (now >= record.resetAt) {
+      rateLimitStore.delete(key);
+    }
+  }
+}
+
+// ============================================================
+// SESSION TOKEN MANAGEMENT
+// ============================================================
+
+/**
+ * Creates a cryptographically secure session token.
+ *
+ * Default session duration: 24 hours.
+ */
 export function createSessionToken(
   email: string,
   role: 'FACULTY' | 'ADMIN',
@@ -50,104 +110,461 @@ export function createSessionToken(
   permissions: string[] = []
 ): string {
   const token = crypto.randomBytes(32).toString('hex');
-  const expiresAt = Date.now() + 24 * 60 * 60 * 1000; // 24 hours
 
-  const sessions = db.getActiveSessions();
-  sessions[token] = {
+  const session: SessionRecord = {
     email: email.trim().toLowerCase(),
     role,
     roleId,
-    permissions,
-    expiresAt
+    permissions: [...new Set(permissions)],
+    expiresAt: Date.now() + SESSION_DURATION
   };
+
+  db.getActiveSessions()[token] = session;
+
   db.save();
+
   return token;
 }
 
-export function invalidateSession(token: string): void {
+/**
+ * Invalidates one session token.
+ */
+export function invalidateSession(token: string): boolean {
   const sessions = db.getActiveSessions();
+
+  if (!sessions[token]) {
+    return false;
+  }
+
   delete sessions[token];
+
   db.save();
+
+  return true;
 }
 
-export function invalidateAllSessionsForEmail(email: string): void {
-  const normEmail = email.trim().toLowerCase();
+/**
+ * Invalidates all sessions belonging to one email address.
+ *
+ * Useful when:
+ * - An administrator is suspended.
+ * - An administrator is revoked.
+ * - Faculty changes account access.
+ * - An account needs to be forcibly logged out.
+ */
+export function invalidateAllSessionsForEmail(
+  email: string
+): number {
+  const normalizedEmail = email.trim().toLowerCase();
   const sessions = db.getActiveSessions();
-  for (const token of Object.keys(sessions)) {
-    if (sessions[token].email === normEmail) {
+
+  let removedCount = 0;
+
+  for (const [token, session] of Object.entries(sessions)) {
+    if (session.email.trim().toLowerCase() === normalizedEmail) {
       delete sessions[token];
+      removedCount++;
     }
   }
-  db.save();
+
+  if (removedCount > 0) {
+    db.save();
+  }
+
+  return removedCount;
 }
 
-export function requireAuth(req: Request, res: Response, next: NextFunction): void {
-  const authHeader = req.headers.authorization;
-  const token = authHeader && authHeader.startsWith('Bearer ') ? authHeader.slice(7) : (req.cookies && req.cookies.auth_token);
+// ============================================================
+// TOKEN EXTRACTION
+// ============================================================
 
-  if (!token) {
-    res.status(401).json({ error: 'Authentication required. Please log in.' });
-    return;
-  }
+/**
+ * Extracts a bearer token from the Authorization header.
+ *
+ * Also supports the auth_token cookie if cookie-parser
+ * is installed and configured in server.ts.
+ */
+function extractToken(req: Request): string | null {
+  const authorization = req.headers.authorization;
 
-  const sessions = db.getActiveSessions();
-  const session = sessions[token];
+  if (authorization?.startsWith('Bearer ')) {
+    const token = authorization.slice(7).trim();
 
-  if (!session || session.expiresAt < Date.now()) {
-    if (session) {
-      delete sessions[token];
-      db.save();
+    if (token) {
+      return token;
     }
-    res.status(401).json({ error: 'Session expired. Please log in again.' });
-    return;
   }
 
-  // Check if admin is suspended or revoked
+  const requestWithCookies = req as Request & {
+    cookies?: Record<string, string>;
+  };
+
+  const cookieToken = requestWithCookies.cookies?.auth_token;
+
+  if (cookieToken) {
+    return cookieToken;
+  }
+
+  return null;
+}
+
+// ============================================================
+// SESSION VALIDATION
+// ============================================================
+
+/**
+ * Validates a token against the active session store.
+ *
+ * Also verifies that the administrator account is still active.
+ */
+function validateSession(
+  token: string
+): AuthContext | null {
+  const sessions = db.getActiveSessions();
+
+  const session = sessions[token] as SessionRecord | undefined;
+
+  if (!session) {
+    return null;
+  }
+
+  // Check session expiration.
+  if (Date.now() >= session.expiresAt) {
+    delete sessions[token];
+    db.save();
+
+    return null;
+  }
+
+  const normalizedEmail = session.email.trim().toLowerCase();
+
+  // Validate the underlying account.
   if (session.role === 'ADMIN') {
-    const admin = db.getAdministrators().find((a) => a.email.toLowerCase() === session.email.toLowerCase());
+    const admin = db.getAdministrators().find(
+      (item) =>
+        item.email.trim().toLowerCase() === normalizedEmail
+    );
+
     if (!admin || admin.status !== 'ACTIVE') {
       delete sessions[token];
       db.save();
-      res.status(403).json({ error: 'Your administrator account has been suspended or revoked. Contact faculty.' });
-      return;
+
+      return null;
     }
+
+    // Use current permissions rather than stale permissions
+    // captured when the session was originally created.
+    return {
+      token,
+      email: admin.email,
+      role: 'ADMIN',
+      roleId: admin.roleId,
+      permissions: Array.isArray(admin.permissions)
+        ? admin.permissions
+        : []
+    };
   }
 
-  req.auth = {
-    token,
-    email: session.email,
-    role: session.role as 'FACULTY' | 'ADMIN',
-    roleId: session.roleId,
-    permissions: session.permissions
-  };
+  if (session.role === 'FACULTY') {
+    const faculty = db.getFaculty().find(
+      (item) =>
+        item.email.trim().toLowerCase() === normalizedEmail
+    );
+
+    if (!faculty) {
+      delete sessions[token];
+      db.save();
+
+      return null;
+    }
+
+    return {
+      token,
+      email: faculty.email,
+      role: 'FACULTY',
+      permissions: ['all']
+    };
+  }
+
+  // Reject unknown session roles.
+  delete sessions[token];
+  db.save();
+
+  return null;
+}
+
+// ============================================================
+// AUTHENTICATION MIDDLEWARE
+// ============================================================
+
+/**
+ * Requires a valid authenticated session.
+ *
+ * Adds the authenticated user's information to req.auth.
+ */
+export function requireAuth(
+  req: Request,
+  res: Response,
+  next: NextFunction
+): void {
+  const token = extractToken(req);
+
+  if (!token) {
+    res.status(401).json({
+      error: 'Authentication required. Please log in.'
+    });
+
+    return;
+  }
+
+  const auth = validateSession(token);
+
+  if (!auth) {
+    res.status(401).json({
+      error: 'Your session is invalid or expired. Please log in again.'
+    });
+
+    return;
+  }
+
+  req.auth = auth;
 
   next();
 }
 
-export function requireFaculty(req: Request, res: Response, next: NextFunction): void {
+// ============================================================
+// FACULTY AUTHORIZATION
+// ============================================================
+
+/**
+ * Allows only authenticated faculty members.
+ */
+export function requireFaculty(
+  req: Request,
+  res: Response,
+  next: NextFunction
+): void {
   requireAuth(req, res, () => {
-    if (req.auth?.role !== 'FACULTY') {
-      res.status(403).json({ error: 'Access denied. Faculty privileges required.' });
+    if (!req.auth) {
+      res.status(401).json({
+        error: 'Authentication required.'
+      });
+
       return;
     }
+
+    if (req.auth.role !== 'FACULTY') {
+      res.status(403).json({
+        error: 'Faculty authorization required.'
+      });
+
+      return;
+    }
+
     next();
   });
 }
 
-export function requirePermission(permission: string) {
-  return (req: Request, res: Response, next: NextFunction): void => {
+// ============================================================
+// PERMISSION CHECKING
+// ============================================================
+
+/**
+ * Checks whether an authenticated user has a specific permission.
+ *
+ * Faculty members have full access.
+ * Administrators must possess the requested permission or 'all'.
+ */
+export function requirePermission(
+  permission: string
+) {
+  return (
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ): void => {
     requireAuth(req, res, () => {
-      if (req.auth?.role === 'FACULTY') {
+      const auth = req.auth;
+
+      if (!auth) {
+        res.status(401).json({
+          error: 'Authentication required.'
+        });
+
+        return;
+      }
+
+      // Faculty has unrestricted administrative access.
+      if (auth.role === 'FACULTY') {
         next();
         return;
       }
 
-      const hasPerm = req.auth?.permissions.includes('all') || req.auth?.permissions.includes(permission);
-      if (!hasPerm) {
-        res.status(403).json({ error: `Forbidden: Missing required permission "${permission}".` });
+      const permissions = auth.permissions || [];
+
+      if (
+        permissions.includes('all') ||
+        permissions.includes(permission)
+      ) {
+        next();
         return;
       }
-      next();
+
+      res.status(403).json({
+        error: 'You do not have permission to perform this action.',
+        requiredPermission: permission
+      });
     });
   };
+}
+
+// ============================================================
+// MULTIPLE PERMISSION CHECKING
+// ============================================================
+
+/**
+ * Allows access when the user has ANY ONE of the supplied
+ * permissions.
+ *
+ * Example:
+ *
+ * requireAnyPermission([
+ *   'events_view',
+ *   'events_manage',
+ *   'attendance_manage'
+ * ])
+ */
+export function requireAnyPermission(
+  requiredPermissions: string[]
+) {
+  return (
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ): void => {
+    requireAuth(req, res, () => {
+      const auth = req.auth;
+
+      if (!auth) {
+        res.status(401).json({
+          error: 'Authentication required.'
+        });
+
+        return;
+      }
+
+      if (auth.role === 'FACULTY') {
+        next();
+        return;
+      }
+
+      const userPermissions = auth.permissions || [];
+
+      const hasPermission =
+        userPermissions.includes('all') ||
+        requiredPermissions.some((permission) =>
+          userPermissions.includes(permission)
+        );
+
+      if (hasPermission) {
+        next();
+        return;
+      }
+
+      res.status(403).json({
+        error: 'You do not have sufficient permissions.',
+        requiredAnyOf: requiredPermissions
+      });
+    });
+  };
+}
+
+// ============================================================
+// ADMINISTRATOR ROLE CHECKING
+// ============================================================
+
+/**
+ * Restricts access to specific administrator roles.
+ *
+ * Example:
+ *
+ * requireRole(['role-president', 'role-event-mgr'])
+ */
+export function requireRole(
+  allowedRoleIds: string[]
+) {
+  return (
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ): void => {
+    requireAuth(req, res, () => {
+      const auth = req.auth;
+
+      if (!auth) {
+        res.status(401).json({
+          error: 'Authentication required.'
+        });
+
+        return;
+      }
+
+      if (auth.role === 'FACULTY') {
+        next();
+        return;
+      }
+
+      if (
+        auth.roleId &&
+        allowedRoleIds.includes(auth.roleId)
+      ) {
+        next();
+        return;
+      }
+
+      res.status(403).json({
+        error: 'Your administrator role does not have access to this resource.'
+      });
+    });
+  };
+}
+
+// ============================================================
+// EXPIRED SESSION CLEANUP
+// ============================================================
+
+/**
+ * Removes expired sessions from the database.
+ */
+export function cleanupExpiredSessions(): number {
+  const sessions = db.getActiveSessions();
+
+  const now = Date.now();
+  let removedCount = 0;
+
+  for (const [token, session] of Object.entries(sessions)) {
+    if (now >= session.expiresAt) {
+      delete sessions[token];
+      removedCount++;
+    }
+  }
+
+  if (removedCount > 0) {
+    db.save();
+  }
+
+  return removedCount;
+}
+
+// ============================================================
+// AUTHENTICATION MAINTENANCE
+// ============================================================
+
+/**
+ * Can be called during server startup to remove expired
+ * sessions and old rate-limit records.
+ */
+export function runAuthMaintenance(): void {
+  cleanupExpiredSessions();
+  cleanupRateLimits();
 }
