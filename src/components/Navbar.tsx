@@ -1,4 +1,5 @@
 import clubLogo from '../assets/images/Sakura_Themed_Logo.png';
+import cmritLogo from '../assets/images/cmrit_logo.png';
 import { useState, useEffect, useRef } from 'react';
 import {
   Volume2,
@@ -124,23 +125,28 @@ export default function Navbar({
     <>
       {/* Responsive Floating Header */}
       <header
-        className={`
+        className={`cmrit-header
           fixed top-3 sm:top-4 left-1/2 -translate-x-1/2
           w-[calc(100%-16px)] sm:w-[calc(100%-32px)]
           max-w-[1600px] z-50
           rounded-xl sm:rounded-2xl
-          border transition-all duration-300
-          ${
-            isScrolled
-              ? 'bg-[#080A12]/25 backdrop-blur-md border-white/10 py-2'
-              : 'bg-transparent border-transparent shadow-none py-2.5 sm:py-3'
-          }
+          !bg-transparent
+          !border-transparent
+          !shadow-none
+          !backdrop-blur-none
+          transition-all duration-300
+          py-2.5 sm:py-3
         `}
       >
-        <div className="w-full min-h-[48px] sm:min-h-[52px] px-2.5 sm:px-4 lg:px-5 flex items-center justify-between gap-2 lg:gap-3">
+        <div className="cmrit-header-layout w-full px-2.5 sm:px-4 lg:px-5 grid items-center gap-x-2 gap-y-1">
+          <img
+            src={cmritLogo}
+            alt="CMR Institute of Technology 25 Years"
+            className="cmrit-header-logo object-contain"
+          />
 
           {/* BRAND */}
-          <div className="flex items-center shrink-0 min-w-0">
+          <div className="cmrit-header-brand flex min-w-0 items-center">
             <button
               onClick={() => handleSelectNav('home')}
               className="flex items-center gap-2 sm:gap-3 group text-left focus:outline-none"
@@ -163,18 +169,18 @@ export default function Navbar({
               </div>
             </div>
 
-              <div className="min-w-0">
-                <div className="flex items-center gap-1.5 sm:gap-2">
-                  <span className="font-bold tracking-wide sm:tracking-wider text-white text-sm sm:text-base lg:text-lg group-hover:text-[#53D8F0] transition-colors whitespace-nowrap">
+              <div className="cmrit-brand-copy min-w-0">
+                <div className="cmrit-brand-title flex items-center gap-1.5 sm:gap-2">
+                  <span className="font-bold tracking-wide sm:tracking-wider text-white text-[11px] sm:text-sm lg:text-lg group-hover:text-[#53D8F0] transition-colors whitespace-nowrap">
                     JAPANESE CLUB
                   </span>
 
-                  <span className="text-[9px] sm:text-[10px] font-mono px-1.5 sm:px-2 py-0.5 rounded bg-[#E63946]/20 text-[#E63946] border border-[#E63946]/30 font-medium whitespace-nowrap hidden md:inline-block">
+                  <span className="text-[8px] sm:text-[10px] font-mono px-1 sm:px-2 py-0.5 rounded bg-[#E63946]/20 text-[#E63946] border border-[#E63946]/30 font-medium whitespace-nowrap">
                     日本語クラブ
                   </span>
                 </div>
 
-                <p className="text-[9px] sm:text-[10px] lg:text-[11px] text-[#A6ADBD] tracking-wider uppercase font-medium whitespace-nowrap hidden sm:block">
+                <p className="text-[7px] sm:text-[9px] lg:text-[11px] text-[#A6ADBD] tracking-wider uppercase font-medium whitespace-nowrap">
                   Official
                 </p>
               </div>
@@ -182,7 +188,7 @@ export default function Navbar({
           </div>
 
           {/* DESKTOP NAVIGATION */}
-          <nav className="hidden 2xl:flex flex-1 min-w-0 items-center justify-center gap-0.5 bg-white/5 border border-white/10 rounded-full px-1.5 py-1.5 backdrop-blur-md">
+          <nav className="cmrit-header-desktop-nav min-w-0 items-center justify-center gap-0.5 bg-white/5 border border-white/10 rounded-full px-2 py-1.5 backdrop-blur-md">
             {PRIMARY_NAV_ITEMS.map((item) => {
               const isActive = currentSection === item.id;
 
@@ -191,7 +197,7 @@ export default function Navbar({
                   key={item.id}
                   onClick={() => handleSelectNav(item.id)}
                   className={`
-                    relative px-2.5 py-2 rounded-full
+                    cmrit-nav-item relative shrink-0 px-2.5 py-2 rounded-full
                     text-[11px] 2xl:text-xs font-medium
                     transition-all duration-200
                     flex items-center gap-1 whitespace-nowrap group
@@ -205,7 +211,7 @@ export default function Navbar({
                   <span>{item.label}</span>
 
                   <span
-                    className={`text-[9px] 2xl:text-[10px] font-jp ${
+                    className={`cmrit-nav-japanese text-[9px] 2xl:text-[10px] font-jp ${
                       isActive
                         ? 'text-white/90'
                         : 'text-[#53D8F0]/80 group-hover:text-[#53D8F0]'
@@ -222,7 +228,7 @@ export default function Navbar({
               <button
                 onClick={() => setMoreMenuOpen((previous) => !previous)}
                 className={`
-                  flex items-center gap-1 px-2.5 py-2 rounded-full
+                  cmrit-nav-more flex shrink-0 items-center gap-1 px-2.5 py-2 rounded-full
                   text-[11px] 2xl:text-xs font-medium
                   transition-all duration-200 whitespace-nowrap
                   ${
@@ -277,7 +283,7 @@ export default function Navbar({
           </nav>
 
           {/* HEADER CONTROLS */}
-          <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+          <div className="cmrit-header-actions flex shrink-0 items-center gap-1 sm:gap-1.5 lg:gap-2">
 
             {/* SOUND */}
             <button
@@ -321,7 +327,7 @@ export default function Navbar({
             <button
               onClick={() => handleSelectNav('join')}
               className="
-                hidden sm:flex items-center justify-center gap-1.5
+                cmrit-join-cta hidden items-center justify-center gap-1.5
                 px-3 sm:px-4 lg:px-5 py-2
                 rounded-full
                 bg-gradient-to-r from-[#E63946] via-[#d62839] to-[#7652D6]
@@ -344,7 +350,7 @@ export default function Navbar({
             <button
               onClick={() => setMobileMenuOpen((previous) => !previous)}
               className="
-                2xl:hidden p-2 sm:p-2.5
+                cmrit-header-menu p-2 sm:p-2.5
                 rounded-lg bg-white/5 border border-white/10
                 text-white hover:bg-white/10 transition-colors
               "
@@ -358,6 +364,7 @@ export default function Navbar({
               )}
             </button>
           </div>
+
         </div>
       </header>
 
@@ -370,7 +377,7 @@ export default function Navbar({
           className="
             fixed inset-0 z-40
             bg-[#080A12]/98 backdrop-blur-2xl
-            2xl:hidden
+            cmrit-header-drawer
             flex flex-col
             pt-24 sm:pt-28
             px-4 sm:px-6

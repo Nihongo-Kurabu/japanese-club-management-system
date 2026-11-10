@@ -445,7 +445,7 @@ export const CULTURAL_TOPICS: CulturalTopic[] = [
     subtitle: 'The Soul of Japanese Celebration & Community Bond',
     summary: 'From ancient Shinto celebrations to lantern-lit summer nights, Matsuri brings communities together through vibrant Mikoshi shrines, food stalls (Yatai), and traditional Bon dances.',
     fullStory: 'Matsuri (祭り) are lively Japanese festivals steeped in centuries of folklore and Shinto traditions. Almost every neighborhood shrine hosts its own festival honoring local kami (deities). During summer festivals, participants wear lightweight cotton Yukata and wooden Geta sandals. Vibrant Yatai street food carts line the avenues offering Takoyaki, Yakisoba, and shaved ice, while the rhythm of Taiko drums accompanies the communal Bon Odori dancing under floating crimson paper lanterns.',
-    image: 'https://images.unsplash.com/photo-1528164344705-475426879c0d?auto=format&fit=crop&w=1200&q=80',
+    image: './src/assets/images/Matsuri.jpeg',
     keyElements: [
       { term: '神輿 (Mikoshi)', kana: 'みこし', meaning: 'Portable Shinto shrine carried by teams during festival parades' },
       { term: '屋台 (Yatai)', kana: 'やたい', meaning: 'Traditional open-air street food stalls offering festival delicacies' },

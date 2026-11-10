@@ -172,6 +172,9 @@ button:focus-visible {
   box-shadow: 0 10px 30px -10px rgba(230, 57, 70, 0.2);
 }
 
+
+
+
 /* =========================================
    JAPANESE PATTERN GRID
 ========================================= */
@@ -184,3 +187,395 @@ button:focus-visible {
     );
   background-size: 24px 24px;
 }
+
+
+
+
+
+/* =========================================
+   MOBILE HEADER — TWO ROW LAYOUT
+   Row 1: Japanese Club + Header Actions
+   Row 2: Centered CMRIT Logo
+   Floating over continuous hero background
+========================================= */
+
+@media screen and (max-width: 767px) {
+
+  /* Main floating header */
+  .cmrit-header {
+    position: fixed !important;
+    top: 12px !important;
+    left: 50% !important;
+    right: auto !important;
+    bottom: auto !important;
+
+    width: calc(100% - 12px) !important;
+    max-width: none !important;
+    height: auto !important;
+    min-height: 0 !important;
+
+    transform: none !important;
+    translate: -50% 0 !important;
+
+    margin: 0 !important;
+    padding: 0 !important;
+
+    background: transparent !important;
+    background-color: transparent !important;
+    background-image: none !important;
+
+    border: none !important;
+    box-shadow: none !important;
+    outline: none !important;
+
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+
+    overflow: visible !important;
+    z-index: 100 !important;
+  }
+
+  /* Header layout */
+  .cmrit-header-layout {
+    display: grid !important;
+
+    grid-template-columns: minmax(0, 1fr) auto !important;
+    grid-template-rows: auto auto !important;
+
+    align-items: center;
+    column-gap: 6px;
+    row-gap: 4px;
+
+    width: 100% !important;
+    height: auto !important;
+    min-height: 0 !important;
+
+    padding: 8px 10px 4px !important;
+    margin: 0 !important;
+
+    position: relative !important;
+
+    background: transparent !important;
+    background-color: transparent !important;
+    background-image: none !important;
+
+    border: none !important;
+    box-shadow: none !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+
+    overflow: visible !important;
+  }
+
+  /* =====================================
+     ROW 1 — JAPANESE CLUB BRANDING
+  ===================================== */
+
+  .cmrit-header-brand {
+    grid-column: 1;
+    grid-row: 1;
+
+    display: flex !important;
+    align-items: center !important;
+    justify-self: start;
+
+    width: 100%;
+    min-width: 0;
+
+    position: relative;
+    z-index: 3;
+
+    background: transparent !important;
+  }
+
+  .cmrit-brand-title {
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: center !important;
+
+    gap: 6px;
+    min-width: 0;
+  }
+
+  .cmrit-brand-title > * {
+    flex-shrink: 0;
+  }
+
+  /* =====================================
+     ROW 1 — HEADER ACTIONS
+  ===================================== */
+
+  .cmrit-header-actions {
+    grid-column: 2;
+    grid-row: 1;
+
+    display: flex !important;
+    align-items: center !important;
+    justify-self: end;
+    justify-content: flex-end;
+
+    gap: 5px;
+    min-width: 0;
+
+    position: relative;
+    z-index: 4;
+
+    background: transparent !important;
+  }
+
+  /* =====================================
+     ROW 2 — CMRIT LOGO
+  ===================================== */
+
+  .cmrit-header-logo {
+    grid-column: 1 / -1;
+    grid-row: 2;
+
+    display: block !important;
+
+    position: relative !important;
+    top: auto !important;
+    right: auto !important;
+    bottom: auto !important;
+    left: auto !important;
+
+    transform: none !important;
+    translate: none !important;
+
+    justify-self: center;
+    align-self: center;
+
+    width: 82px !important;
+    height: 58px !important;
+
+    max-width: 100%;
+    object-fit: contain;
+    object-position: center;
+
+    margin: 2px auto 0 !important;
+    padding: 0 !important;
+
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+
+    z-index: 3;
+    pointer-events: none;
+  }
+
+  /* Hide desktop navigation */
+  .cmrit-header-desktop-nav,
+  .cmrit-join-cta {
+    display: none !important;
+  }
+
+  /* Show hamburger menu */
+  .cmrit-header-menu {
+    display: flex !important;
+  }
+
+  /* Do not push hero down */
+  .cmrit-header + .cmrit-hero,
+  .cmrit-header + section {
+    margin-top: 0 !important;
+  }
+}
+
+/* =========================================
+   EXTRA SMALL MOBILE
+========================================= */
+
+@media screen and (max-width: 380px) {
+
+  .cmrit-header {
+    width: calc(100% - 8px) !important;
+  }
+
+  .cmrit-header-layout {
+    padding: 8px 7px 3px !important;
+    column-gap: 4px;
+    row-gap: 3px;
+  }
+
+  .cmrit-brand-title {
+    gap: 4px;
+  }
+
+  .cmrit-header-actions {
+    gap: 4px;
+  }
+
+  .cmrit-header-logo {
+    width: 76px !important;
+    height: 54px !important;
+  }
+}
+
+
+/* =========================================
+   TABLET / LAPTOP — ONE HORIZONTAL ROW
+========================================= */
+
+@media (min-width: 768px) and (max-width: 1599px) {
+  .cmrit-header-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-rows: auto;
+    align-items: center;
+    column-gap: 1rem;
+    row-gap: 0;
+    position: relative;
+  }
+
+  /* CMRIT logo centered independently.
+     Absolute positioning prevents an extra grid row. */
+  .cmrit-header-logo {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+
+    display: block;
+    width: 120px;
+    height: 84px;
+    object-fit: contain;
+
+    z-index: 5;
+    pointer-events: none;
+  }
+
+  .cmrit-header-brand {
+    grid-column: 1;
+    grid-row: 1;
+    justify-self: start;
+    min-width: 0;
+  }
+
+  .cmrit-header-actions {
+    grid-column: 2;
+    grid-row: 1;
+    justify-self: end;
+    display: flex;
+    align-items: center;
+  }
+
+  .cmrit-brand-title {
+    flex-direction: row;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .cmrit-header-desktop-nav,
+  .cmrit-join-cta {
+    display: none !important;
+  }
+
+  .cmrit-header-menu {
+    display: flex;
+  }
+
+  /* Hide only the unwanted duplicate floating panel.
+     Keep the actual full-screen navigation component. */
+  .cmrit-header-drawer {
+    /* Visibility should be controlled by the correct
+       full-screen navigation component and React state. */
+  }
+}
+
+/* =========================================
+   LARGE DESKTOP / MONITOR — ONE ROW
+========================================= */
+
+@media (min-width: 1600px) {
+  .cmrit-header-layout {
+    display: grid;
+    grid-template-columns: 140px auto minmax(0, 1fr) auto;
+    grid-template-rows: auto;
+    column-gap: 1rem;
+    row-gap: 0;
+    align-items: center;
+    position: relative;
+  }
+
+  /* CMRIT logo — UPPER LEFT */
+  .cmrit-header-logo {
+    position: static;
+    grid-column: 1;
+    grid-row: 1;
+
+    justify-self: start;
+    align-self: center;
+
+    transform: none;
+    width: 140px;
+    height: 100px;
+    object-fit: contain;
+
+    z-index: 2;
+  }
+
+  /* Japanese Club branding */
+  .cmrit-header-brand {
+    grid-column: 2;
+    grid-row: 1;
+    justify-self: start;
+    align-self: center;
+    min-width: 0;
+  }
+
+  /* Desktop horizontal navigation */
+  .cmrit-header-desktop-nav {
+    display: flex;
+    grid-column: 3;
+    grid-row: 1;
+
+    width: 100%;
+    min-width: 0;
+
+    justify-content: space-between;
+    align-items: center;
+    gap: 0.25rem;
+    padding-inline: 0.5rem;
+  }
+
+  /* Header actions */
+  .cmrit-header-actions {
+    grid-column: 4;
+    grid-row: 1;
+
+    justify-self: end;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .cmrit-join-cta {
+    display: flex;
+  }
+
+  .cmrit-header-menu,
+  .cmrit-header-drawer {
+    display: none !important;
+  }
+
+  .cmrit-brand-title {
+    flex-direction: row;
+    align-items: center;
+  }
+
+  .cmrit-nav-item,
+  .cmrit-nav-more {
+    font-size: 11px;
+    padding-inline: 0.25rem;
+  }
+
+  .cmrit-nav-item {
+    gap: 0.25rem;
+  }
+
+  .cmrit-nav-japanese {
+    font-size: 9px;
+  }
+}
+
+
