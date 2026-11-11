@@ -96,11 +96,11 @@ export interface FacultyAdvisor {
 }
 
 export const FACULTY_ADVISOR: FacultyAdvisor = {
-  name: 'Prof. Dr. Haruto Tanaka',
+  name: 'Prof. Dr. ',
   japaneseName: '田中 治人 教授',
   role: 'Chief Faculty Advisor & Institutional Patron',
   department: 'Department of Computer Science & Cultural Informatics',
-  image: '/src/assets/images/faculty_advisor_portrait_1794030717743.jpg',
+  image: '/src/assets/images/faculty_advisor.jpg',
   education: 'Ph.D. in Computational Linguistics & Systems, University of Tokyo (東京大学)',
   credentials: [
     'JLPT N1 Certified (Rank A — Native Competency)',
@@ -111,7 +111,7 @@ export const FACULTY_ADVISOR: FacultyAdvisor = {
   welcomeMessage:
     'A university education extends far beyond algorithmic proofs and textbooks. When students engage with Japanese culture—its foundational ethos of harmony (和), the relentless pursuit of mastery (Kaizen), and quiet empathy (Omoiyari)—they cultivate global perspective, discipline, and creative vitality. As Faculty Advisor of Komorebi, I am dedicated to championing our students, opening avenues for JLPT certifications, research fellowships, and fostering an inclusive community where everyone thrives.',
   about:
-    'Prof. Dr. Haruto Tanaka has served as the academic advisor to the Komorebi Japanese Club since its inception. Having spent over eight years at the University of Tokyo and Keio University engaged in research on cross-lingual semantics and human-computer interaction, Dr. Tanaka actively bridges technical engineering rigor with humanistic cultural immersion. He oversees the institutional curriculum of our JLPT preparation cohorts, provides direct recommendation letters for MEXT scholarships, and ensures our university matsuri celebrations meet the highest standards of cultural authenticity and safety.',
+    'Prof. Dr. has served as the academic advisor to the Komorebi Japanese Club since its inception. Having spent over eight years at the University of Tokyo and Keio University engaged in research on cross-lingual semantics and human-computer interaction, Dr. Tanaka actively bridges technical engineering rigor with humanistic cultural immersion. He oversees the institutional curriculum of our JLPT preparation cohorts, provides direct recommendation letters for MEXT scholarships, and ensures our university matsuri celebrations meet the highest standards of cultural authenticity and safety.',
   office: 'Academic Block 3, Faculty Suites — Room 408',
   email: 'haruto.tanaka@college.edu',
   consultationHours: 'Tuesdays & Thursdays, 3:30 PM – 5:30 PM (or by email appointment)',
@@ -140,7 +140,7 @@ export const LEADERSHIP_TEAM: TeamMember[] = [
     japaneseName: 'ディヴィヤム',
     roles: ['President (会長 - Kaichou)'],
     bio: 'Guiding the club’s strategic vision, institutional partnerships, and cultural exchanges. Passionate about Japanese history, philosophy, and community building.',
-    image: './src/assets/images/Divyam.jpeg',
+    image: '/images/Divyam.jpeg',
     category: 'core',
     tags: ['Vision', 'Leadership', 'Sengoku History'],
 
@@ -171,7 +171,7 @@ export const LEADERSHIP_TEAM: TeamMember[] = [
     japaneseName: 'リディ',
     roles: ['Vice President (副会長 - Fuku-Kaichou)'],
     bio: 'Overseeing operations, cross-department initiatives, and member welfare. Dedicated to celebrating both traditional Japanese arts and contemporary pop culture.',
-    image: './src/assets/images/Ridhi.jpeg',
+    image: '/images/Ridhi.jpeg',
     category: 'core',
     tags: ['Operations', 'Culture', 'Tea Ceremony'],
 
@@ -202,7 +202,7 @@ export const LEADERSHIP_TEAM: TeamMember[] = [
     japaneseName: 'プラナヴ',
     roles: ['Technical Head & Web Architect (技術部長兼ウェブ責任者)'],
     bio: 'Architect of the official Japanese Club digital universe, interactive language tools, and tech-driven cultural showcases.',
-    image: './src/assets/images/Pranav.jpeg',
+    image: '/images/Pranav.jpeg',
     category: 'core',
     tags: ['Full Stack', 'Interactive Portals', 'Cyberpunk & Anime Aesthetic'],
 
@@ -247,7 +247,7 @@ export const LEADERSHIP_TEAM: TeamMember[] = [
     japaneseName: 'ディヴィヤンカ',
     roles: ['Secretary (書記 - Shoki)'],
     bio: 'Managing club records, communications, session schedules, and internal community administration with precision and dedication.',
-    image: './src/assets/images/Divyanka1.jpeg',
+    image: '/images/Divyanka1.jpeg',
     category: 'core',
     tags: ['Records', 'Liaison', 'Language Enthusiast'],
 
@@ -278,7 +278,7 @@ export const LEADERSHIP_TEAM: TeamMember[] = [
     japaneseName: 'リシカ',
     roles: ['Event Head (企画部長 - Kikaku Buchou)'],
     bio: 'Curating unforgettable experiences, cultural showcases, matsuri celebrations, and interactive Japanese workshops on campus.',
-    image: './src/assets/images/Rishika.jpeg',
+    image: '/images/Rishika.jpeg',
     category: 'core',
     tags: ['Festivals', 'Stage Craft', 'Origami'],
 
@@ -309,7 +309,7 @@ export const LEADERSHIP_TEAM: TeamMember[] = [
     japaneseName: 'アンキタ 先輩',
     roles: ['Club Senpai & Cultural Mentor (先輩・文化相談役)'],
     bio: 'Senior advisor guiding junior members in cultural nuances, Japanese academic opportunities, and building long-lasting club traditions.',
-    image: './src/assets/images/Ankita1.jpeg',
+    image: '/images/Ankita1.jpeg',
     category: 'senpai',
     tags: ['Academic Advisor', 'JLPT Mentorship', 'Cultural Heritage'],
 
@@ -341,7 +341,7 @@ export const LEADERSHIP_TEAM: TeamMember[] = [
     japaneseName: 'サミール 先輩',
     roles: ['Club Senpai & Community Mentor (先輩・コミュニティ相談役)'],
     bio: 'Former leadership steward providing steadfast counsel on club growth, collaborative spirit (和), and creative exploration.',
-    image: './src/assets/images/Sameer.jpeg',
+    image: '/images/Sameer.jpeg',
     category: 'senpai',
     tags: ['Strategic Counsel', 'Alumni Network', 'Martial Arts & Bushido'],
 
@@ -366,7 +366,7 @@ export const LEADERSHIP_TEAM: TeamMember[] = [
     japaneseName: 'アブラル',
     roles: ['Anime Group Moderator (アニメ統括 - Anime Toukatsu)'],
     bio: 'Leading anime analysis, weekly watch sessions, manga discussions, and sound track appreciation nights. The club’s resident lore archivist.',
-    image: './src/assets/images/Abrar.jpeg',
+    image: '/images/Abrar.jpeg',
     category: 'core',
     tags: ['Manga', 'Sakuga Analysis', 'Community Discussions'],
 
@@ -445,7 +445,7 @@ export const CULTURAL_TOPICS: CulturalTopic[] = [
     subtitle: 'The Soul of Japanese Celebration & Community Bond',
     summary: 'From ancient Shinto celebrations to lantern-lit summer nights, Matsuri brings communities together through vibrant Mikoshi shrines, food stalls (Yatai), and traditional Bon dances.',
     fullStory: 'Matsuri (祭り) are lively Japanese festivals steeped in centuries of folklore and Shinto traditions. Almost every neighborhood shrine hosts its own festival honoring local kami (deities). During summer festivals, participants wear lightweight cotton Yukata and wooden Geta sandals. Vibrant Yatai street food carts line the avenues offering Takoyaki, Yakisoba, and shaved ice, while the rhythm of Taiko drums accompanies the communal Bon Odori dancing under floating crimson paper lanterns.',
-    image: './src/assets/images/Matsuri.jpeg',
+    image: '/images/Matsuri.jpeg',
     keyElements: [
       { term: '神輿 (Mikoshi)', kana: 'みこし', meaning: 'Portable Shinto shrine carried by teams during festival parades' },
       { term: '屋台 (Yatai)', kana: 'やたい', meaning: 'Traditional open-air street food stalls offering festival delicacies' },
