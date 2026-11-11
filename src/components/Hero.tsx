@@ -129,7 +129,7 @@ export default function Hero({ onNavigate }: HeroProps) {
         aria-hidden="true"
       >
         <span className="font-mono text-[10px] tracking-widest text-[#53D8F0]/70 uppercase -rotate-90">
-          EST. 2026
+          EST.  2026
         </span>
 
         <div className="w-px h-20 bg-gradient-to-b from-transparent via-white/20 to-transparent" />
