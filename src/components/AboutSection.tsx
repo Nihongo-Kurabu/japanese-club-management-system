@@ -1,12 +1,16 @@
-import { Compass, Target, Sparkles, Shield, Heart, Award, ArrowRight } from 'lucide-react';
+import { Compass, Target, Award, ArrowRight, Users } from 'lucide-react';
+import { useState } from 'react';
 import { NavSection } from './Navbar';
-import { LEADERSHIP_TEAM } from '../data/clubData';
+import { LEADERSHIP_TEAM, type TeamMember } from '../data/clubData';
+import LeadershipProfileModal from './LeadershipProfileModal';
 
 interface AboutSectionProps {
   onNavigate: (section: NavSection) => void;
 }
 
 export default function AboutSection({ onNavigate }: AboutSectionProps) {
+  const [selectedMember, setSelectedMember] = useState<TeamMember | null>(null);
+
   return (
     <div className="pt-24 pb-20 bg-[#080A12] min-h-screen text-[#F5EBDD]">
       {/* Header Banner */}
@@ -183,6 +187,110 @@ export default function AboutSection({ onNavigate }: AboutSectionProps) {
           <ArrowRight className="w-4 h-4" />
         </button>
       </div>
+
+      <section className="py-20 mt-16 bg-[#111522] border-y border-white/5">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center max-w-3xl mx-auto mb-12">
+            <span className="text-xs font-mono tracking-widest text-[#53D8F0] uppercase">
+              Student Leaders & Mentors • 幹部と先輩
+            </span>
+            <h2 className="text-3xl sm:text-4xl font-extrabold font-display text-white mt-2 uppercase tracking-tight">
+              WHO MAKES OUR JAPANESE CLUB?
+            </h2>
+            <p className="mt-4 text-[#A6ADBD] text-sm sm:text-base font-light">
+              Meet the students and mentors who create, lead, and support our Japanese Club community.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            {LEADERSHIP_TEAM.filter((member) => member.name !== 'Abrar').map((member) => {
+              const isSenpai = member.category === 'senpai';
+              const isPranav = member.name === 'Pranav';
+
+              return (
+                <div
+                  key={member.name}
+                  role="button"
+                  tabIndex={0}
+                  aria-label={`View ${member.name}'s full profile`}
+                  onClick={() => setSelectedMember(member)}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter' || event.key === ' ') {
+                      event.preventDefault();
+                      setSelectedMember(member);
+                    }
+                  }}
+                  className={`group rounded-2xl p-5 border transition-all duration-300 relative flex flex-col justify-between cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#53D8F0] ${
+                    isSenpai
+                      ? 'bg-gradient-to-b from-[#171C2B] to-[#1a172e] border-[#7652D6]/40 hover:border-[#7652D6]'
+                      : 'bg-[#171C2B] border-white/10 hover:border-[#E63946]/50'
+                  }`}
+                >
+                  <div>
+                    <div className="relative w-full h-56 rounded-xl overflow-hidden mb-4">
+                      <img
+                        src={member.image}
+                        alt={member.name}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                        loading="lazy"
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-t from-[#171C2B] via-transparent to-transparent opacity-70" />
+                      {isSenpai && (
+                        <div className="absolute top-3 left-3 px-2.5 py-1 rounded-full bg-[#7652D6] text-white text-[10px] font-mono tracking-wider font-semibold shadow-lg flex items-center gap-1">
+                          <Award className="w-3 h-3 text-[#53D8F0]" />
+                          <span>SENPAI MENTOR (先輩)</span>
+                        </div>
+                      )}
+                      {isPranav && (
+                        <div className="absolute top-3 left-3 px-2 py-0.5 rounded-full bg-[#53D8F0]/20 border border-[#53D8F0]/60 text-[#53D8F0] text-[10px] font-mono font-medium backdrop-blur-md">
+                          Dual Role (二重役職)
+                        </div>
+                      )}
+                      <div className="absolute bottom-2 right-3 font-serif text-lg text-white/50 tracking-wider">
+                        {member.japaneseName}
+                      </div>
+                    </div>
+
+                    <h3 className="text-lg font-bold text-white group-hover:text-[#53D8F0] transition-colors flex items-center justify-between gap-2">
+                      <span>{member.name}</span>
+                      <span className="text-xs font-serif text-[#A6ADBD]">{member.japaneseName}</span>
+                    </h3>
+                    <div className="mt-1 space-y-0.5">
+                      {member.roles.map((role) => (
+                        <p
+                          key={role}
+                          className={`text-xs font-semibold ${isSenpai ? 'text-[#53D8F0]' : 'text-[#E63946]'}`}
+                        >
+                          {role}
+                        </p>
+                      ))}
+                    </div>
+                    <p className="mt-3 text-xs text-[#A6ADBD] leading-relaxed line-clamp-3">
+                      {member.bio}
+                    </p>
+                  </div>
+
+                  <div className="mt-4 pt-3 border-t border-white/10 flex flex-wrap gap-1.5">
+                    {member.tags.map((tag) => (
+                      <span
+                        key={tag}
+                        className="text-[10px] font-mono px-2 py-0.5 rounded bg-white/5 text-[#A6ADBD] border border-white/5"
+                      >
+                        {tag}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </section>
+
+      <LeadershipProfileModal
+        member={selectedMember}
+        onClose={() => setSelectedMember(null)}
+      />
     </div>
   );
 }
