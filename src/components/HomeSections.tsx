@@ -129,7 +129,7 @@ export default function HomeSections({
               <p className="mt-6 text-base sm:text-lg text-[#A6ADBD] leading-relaxed font-light">
                 Founded to bridge the rich heritage of Japan with our college community, the{' '}
                 <strong className="text-white font-semibold">
-                  Komorebi Japanese Club
+                  Japanese Club
                 </strong>{' '}
                 is a dynamic sanctuary for students passionate about Japanese language, traditional arts,
                 anime storytelling, technology, and mutual cultural exchange.
@@ -156,7 +156,7 @@ export default function HomeSections({
 
                 <div>
                   <p className="text-2xl sm:text-3xl font-extrabold font-mono text-[#E63946]">
-                    24+
+                    10+
                   </p>
                   <p className="text-xs text-[#A6ADBD] mt-1 font-sans">
                     Annual Events (行事)
