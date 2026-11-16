@@ -126,7 +126,7 @@ export const FACULTY_ADVISOR: FacultyAdvisor = {
 export const ADDITIONAL_FACULTY: AdditionalFacultyProfile = {
   name: 'Dr. Lakshmi Sree',
   japaneseName: 'ラクシュミー・スリー先生',
-  role: 'Faculty Co-ordinator',
+  role: 'Faculty Co-ordinator (教員コーディネーター)',
   department: 'Humanities',
   image: '/images/le.jpeg',
   education: 'M.A. in English, Ph.D. in English Literature',
@@ -191,11 +191,11 @@ export const LEADERSHIP_TEAM: TeamMember[] = [
       ],
 
       socials: {
-        github: 'https://github.com/Pranav-git2005',
-        portfolio: '',
-        linkedin: 'https://www.linkedin.com/in/pranav-anand-898475338',
-        instagram: 'https://www.instagram.com/_anand.pranav?exln=a3V4NzllcDB0NW5l&utm_source=ig_contact_invite',
-        email: 'pranavanand350@gmail.com'
+        github: 'https://github.com/ridhishenoy',
+        portfolio: 'https://ridhishenoy.github.io/',
+        linkedin: 'https://www.linkedin.com/in/ridhi-shenoy/',
+        instagram: 'https://www.instagram.com/_.ridhishenoy._/',
+        email: 'bridhi.ise24@cmrit.ac.in'
       }
     }
   },
