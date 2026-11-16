@@ -43,6 +43,8 @@ export interface ClubEvent {
   capacity: number;
   registeredCount: number;
   isPast?: boolean;
+  registrationUrl?: string;
+  socialLinks?: Array<{ label: string; url: string }>;
 }
 
 export interface CulturalTopic {
@@ -392,18 +394,40 @@ export const LEADERSHIP_TEAM: TeamMember[] = [
 
 export const UPCOMING_EVENTS: ClubEvent[] = [
   {
-    id: 'hanami-matsuri-2026',
-    title: '',
-    japaneseTitle: '',
-    category: 'Cultural',
-    date: 'Novemeber 18, 2026',
+    id: 'nihon-no-connect-2026',
+    title: 'Nihon no Connect: Death Note',
+    japaneseTitle: '日本とのつながり',
+    category: 'Anime & Media',
+    date: 'November 18, 2026',
     time: '2:00 PM – 4:00 PM',
-    venue: '',
-    image: '',
-    description: '',
-    highlights: [],
-    capacity: 500,
-    registeredCount: 0
+    venue: 'AV Hall, 2nd Floor, D Block, CMRIT',
+    image: '/images/nihon-no-connect-2026.png',
+    description:
+      'こんにちは, みなさん! The Japanese Club of CMRIT is excited to host its first-ever event, with a Death Note anime theme. Explore Japanese vocabulary and scripts, test your knowledge in a fun quiz, and learn about club recruitment and opportunities. Open to all CMRIT students; no prior Japanese knowledge is required. Bring your curiosity and competitive spirit!',
+    highlights: [
+      'Japanese Vocabulary Rapid Fire — test your Nihongo',
+      'Discover the story behind Japanese scripts',
+      '“Is This From Japan?” quiz with unexpected twists',
+      'A preview of Japanese Club membership and opportunities',
+      'Prizes for winners, including anime figurines and posters'
+    ],
+    capacity: 0,
+    registeredCount: 0,
+    registrationUrl: 'https://forms.gle/FMsdV9cmC1w8uPrS6',
+    socialLinks: [
+      {
+        label: 'Join our WhatsApp group',
+        url: 'https://chat.whatsapp.com/DtGSkzezAF7JTDeceSWWLK?s=qt&p=a&iam=2'
+      },
+      {
+        label: 'Follow us on Instagram',
+        url: 'https://www.instagram.com/japaneseclub_cmrit/'
+      },
+      {
+        label: 'Connect on LinkedIn',
+        url: 'https://www.linkedin.com/company/japanese-club-cmrit/posts/?feedView=all'
+      }
+    ]
   },
 ];
 

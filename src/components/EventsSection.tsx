@@ -360,12 +360,13 @@ export default function EventsSection({
     normalizeEvent(event, 'static')
   );
 
-  const allEvents: DisplayEvent[] =
-    events.length > 0
-      ? events
-      : eventsError
-        ? [...staticUpcomingEvents, ...staticPastEvents]
-        : [];
+  const apiEventIds = new Set(events.map(getEventKey));
+  const additionalStaticEvents = staticUpcomingEvents.filter(
+    (event) => !apiEventIds.has(getEventKey(event))
+  );
+  const allEvents: DisplayEvent[] = eventsError
+    ? [...staticUpcomingEvents, ...staticPastEvents]
+    : [...events, ...additionalStaticEvents];
 
   const displayedEvents = allEvents.filter((event) => {
     const past = isPastEvent(event);
@@ -753,6 +754,27 @@ export default function EventsSection({
                 </div>
               )}
 
+              {activeEvent.socialLinks && activeEvent.socialLinks.length > 0 && (
+                <div>
+                  <h4 className="text-xs font-mono uppercase tracking-wider text-[#53D8F0] mb-2">
+                    Connect with the Club
+                  </h4>
+                  <div className="flex flex-wrap gap-2">
+                    {activeEvent.socialLinks.map((link) => (
+                      <a
+                        key={link.url}
+                        href={link.url}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-xs text-[#53D8F0] hover:bg-white/10 hover:underline"
+                      >
+                        {link.label}
+                      </a>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               {/* Registration */}
               {!activeEventPast && (
                 <div className="pt-4 border-t border-white/10">
@@ -859,6 +881,20 @@ export default function EventsSection({
                           Register Another Student
                         </button>
                       </div>
+                    </div>
+                  ) : activeEvent.registrationUrl ? (
+                    <div className="p-5 rounded-2xl bg-[#E63946]/10 border border-[#E63946]/30 text-center space-y-3">
+                      <p className="text-sm text-[#F5EBDD]">
+                        Reserve your place using the event registration form.
+                      </p>
+                      <a
+                        href={activeEvent.registrationUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex items-center justify-center px-6 py-3 rounded-xl bg-[#E63946] hover:bg-[#d62839] text-white text-xs font-bold uppercase tracking-wider transition-colors shadow-lg shadow-[#E63946]/30"
+                      >
+                        Register for the Event
+                      </a>
                     </div>
                   ) : canRegister ? (
                     <form
