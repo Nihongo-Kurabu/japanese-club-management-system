@@ -88,50 +88,53 @@ export interface FacultyAdvisor {
   education: string;
   credentials: string[];
   welcomeMessage: string;
-  about: string;
-  office: string;
+  website: string;
+  office?: string;
   email: string;
-  consultationHours: string;
-  initiatives: Array<{ title: string; japaneseTitle: string; description: string }>;
+  consultationHours?: string;
+}
+
+export interface AdditionalFacultyProfile {
+  name: string;
+  japaneseName: string;
+  role: string;
+  department: string;
+  image: string;
+  education: string;
+  credentials: string[];
+  welcomeMessage: string;
+  website: string;
+  email: string;
 }
 
 export const FACULTY_ADVISOR: FacultyAdvisor = {
-  name: 'Prof. Dr. ',
-  japaneseName: '田中 治人 教授',
-  role: 'Chief Faculty Advisor & Institutional Patron',
-  department: 'Department of Computer Science & Cultural Informatics',
-  image: '/src/assets/images/faculty_advisor.jpg',
-  education: 'Ph.D. in Computational Linguistics & Systems, University of Tokyo (東京大学)',
+  name: 'MS. T Sruthi ',
+  japaneseName: 'スルティ先生',
+  role: 'Faculty Co-ordinator (教員コーディネーター)',
+  department: 'Humanities',
+  image: '/images/surti_maam.jpeg',
+  education: 'M.A. in English, Ph.D. in English Literature ',
   credentials: [
-    'JLPT N1 Certified (Rank A — Native Competency)',
-    'Former Monbukagakusho (MEXT) Research Scholar',
-    'Chairperson, University Indo-Japan Academic Exchange Cell',
-    'Senior Member, Japan Foundation Educator Network'
+    ' Assistant Professor'
   ],
   welcomeMessage:
-    'A university education extends far beyond algorithmic proofs and textbooks. When students engage with Japanese culture—its foundational ethos of harmony (和), the relentless pursuit of mastery (Kaizen), and quiet empathy (Omoiyari)—they cultivate global perspective, discipline, and creative vitality. As Faculty Advisor of Komorebi, I am dedicated to championing our students, opening avenues for JLPT certifications, research fellowships, and fostering an inclusive community where everyone thrives.',
-  about:
-    'Prof. Dr. has served as the academic advisor to the Komorebi Japanese Club since its inception. Having spent over eight years at the University of Tokyo and Keio University engaged in research on cross-lingual semantics and human-computer interaction, Dr. Tanaka actively bridges technical engineering rigor with humanistic cultural immersion. He oversees the institutional curriculum of our JLPT preparation cohorts, provides direct recommendation letters for MEXT scholarships, and ensures our university matsuri celebrations meet the highest standards of cultural authenticity and safety.',
-  office: 'Academic Block 3, Faculty Suites — Room 408',
-  email: 'haruto.tanaka@college.edu',
-  consultationHours: 'Tuesdays & Thursdays, 3:30 PM – 5:30 PM (or by email appointment)',
-  initiatives: [
-    {
-      title: 'Institutional JLPT Examination Center',
-      japaneseTitle: '学内日本語能力試験の推進',
-      description: 'Facilitating official campus mock tests, subsidized student exam registrations, and structured peer learning circles.'
-    },
-    {
-      title: 'Tokyo Tech & MEXT Exchange Pathways',
-      japaneseTitle: '国費留学生・研究連携プログラム',
-      description: 'Mentoring engineering students for summer research internships at top Japanese laboratories and universities.'
-    },
-    {
-      title: 'Cross-Cultural Heritage & Ethics',
-      japaneseTitle: '日本伝統文化・倫理の探求',
-      description: 'Upholding authentic Japanese cultural practices, shodo calligraphy masterclasses, and mutual respect (和) on campus.'
-    }
-  ]
+    'A Warm Welcome from the Faculty Coordinators!\nこんにちは (Konnichiwa)!\nWe are delighted to welcome you to the Japanese Club! Our club is a place where curiosity, creativity, and a shared love for Japanese culture come together. We hope to inspire students to explore new perspectives, celebrate cultural diversity, and build lasting connections.\nWe look forward to sharing exciting experiences, wonderful memories, and a joyful journey of learning and discovery with you all!\nLet’s explore, learn, and grow together!',
+  website: 'https://sites.google.com/cmrit.ac.in/tsruthi/home?authuser=0',
+  email: 'sruthi.t@cmrit.ac.in',
+};
+
+export const ADDITIONAL_FACULTY: AdditionalFacultyProfile = {
+  name: 'Dr. Lakshmi Sree',
+  japaneseName: 'ラクシュミー・スリー先生',
+  role: 'Faculty Co-ordinator',
+  department: 'Humanities',
+  image: '/images/le.jpeg',
+  education: 'M.A. in English, Ph.D. in English Literature',
+  credentials: ['Assistant Professor'],
+  welcomeMessage:
+    'A Warm Welcome from the Faculty Coordinators!\nこんにちは (Konnichiwa)!\nWe are delighted to welcome you to the Japanese Club! Our club is a place where curiosity, creativity, and a shared love for Japanese culture come together. We hope to inspire students to explore new perspectives, celebrate cultural diversity, and build lasting connections.\nWe look forward to sharing exciting experiences, wonderful memories, and a joyful journey of learning and discovery with you all!\nLet’s explore, learn, and grow together!',
+  website: 'https://sites.google.com/cmrit.ac.in/drlakshmisree/home',
+  email: 'lakshmi.s@cmrit.ac.in',
 };
 
 export const LEADERSHIP_TEAM: TeamMember[] = [
@@ -161,7 +164,7 @@ export const LEADERSHIP_TEAM: TeamMember[] = [
         portfolio: '',
         linkedin: 'https://www.linkedin.com/in/divyam-kishor/',
         instagram: 'https://www.instagram.com/royale_divyam/',
-        email: ''
+        email: 'kishordivyam@gmail.com'
       }
     }
   },
